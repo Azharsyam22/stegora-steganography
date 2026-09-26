@@ -1,0 +1,1 @@
+"""Stegora pages module"""
