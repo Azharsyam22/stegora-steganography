@@ -158,3 +158,61 @@ def show_progress_bar(percent: int = 0, message: str = ""):
     if message:
         html += f'<p class="stegora-muted" style="text-align: center; margin-top: 0.5rem;">{message}</p>'
     st.markdown(html, unsafe_allow_html=True)
+
+
+
+def info_card(label: str, value: str):
+    """
+    Display info as label-value pair
+    
+    Args:
+        label: Label text
+        value: Value text
+    """
+    st.markdown(f"**{label}:** {value}")
+
+
+def error_message(title: str, message: str):
+    """
+    Display formatted error message
+    
+    Args:
+        title: Error title
+        message: Error description
+    """
+    st.error(f"**{title}**")
+    st.markdown(message)
+
+
+def success_message(message: str):
+    """
+    Display success message
+    
+    Args:
+        message: Success text
+    """
+    st.success(f"✓ {message}")
+
+
+def warning_list(items: list):
+    """
+    Display warning with list of items
+    
+    Args:
+        items: List of warning strings
+    """
+    if items:
+        st.warning(f"⚠️ Required: {', '.join(items)}")
+
+
+def result_placeholder(title: str, description: str):
+    """
+    Display placeholder for future results
+    
+    Args:
+        title: Result section title
+        description: Description of what will appear
+    """
+    st.markdown(f"**{title}**")
+    st.caption(description)
+    st.markdown("*Result will appear here after implementation*")
