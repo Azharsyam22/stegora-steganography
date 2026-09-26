@@ -3,16 +3,26 @@ Stegora - Embed Page
 Hide text or file inside cover image using LSB steganography
 """
 import streamlit as st
-from stegora.ui.components import (
+import secrets
+import io
+from PIL import Image
+
+from frontend.ui.components import (
     page_title, section_header, muted_text, footer
 )
-from stegora.image.io import validate_and_load_cover_image, ImageValidationError
-from stegora.stego.capacity import (
+from backend.image.io import validate_and_load_cover_image, ImageValidationError, save_image
+from backend.image.metrics import calculate_mse, calculate_psnr
+from backend.stego.capacity import (
     calculate_raw_capacity, 
     calculate_usable_capacity,
     check_payload_capacity,
     format_bytes
 )
+from backend.crypto.pbkdf2 import derive_key
+from backend.crypto.aes_gcm import encrypt
+from backend.stego.container import create_container, calculate_container_size
+from backend.stego.positions import generate_positions
+from backend.stego.lsb import embed_lsb
 
 
 def show():
@@ -227,86 +237,150 @@ def show():
             disabled=not can_embed
         )
     
-    # Process embedding (placeholder for now)
+    # Process embedding
     if embed_btn and can_embed:
-        with st.spinner("Embedding message..."):
-            # This will be replaced with actual embedding in T05
-            st.info("💡 Embed functionality not yet implemented (requires T07-T14)")
-            muted_text("Next tasks: Container (T08), PRNG (T09), PBKDF2 (T13), AES-GCM (T14), LSB embedding (T10)")
-            
-            # Show what will happen
-            with st.expander("📋 Embedding Process Preview", expanded=True):
-                st.markdown("""
-                **When implemented, the process will:**
+        try:
+            with st.spinner("Embedding message..."):
+                # 1. Prepare payload
+                if payload_type == "Text":
+                    payload_bytes = payload_text.encode('utf-8')
+                    filename = "message.txt"
+                    mime_type = "text/plain"
+                else:
+                    payload_bytes = payload_file.read()
+                    filename = payload_file.name
+                    mime_type = payload_file.type or "application/octet-stream"
                 
-                1. **Prepare payload**
-                   - Text → UTF-8 bytes
-                   - File → raw bytes
+                # 2. Encrypt payload
+                # Generate random salt and IV
+                salt = secrets.token_bytes(16)
                 
-                2. **Encrypt payload**
-                   - Derive key from password using PBKDF2 (600,000 iterations)
-                   - Generate random salt (16 bytes)
-                   - Generate random IV (12 bytes)
-                   - Encrypt with AES-256-GCM
+                # Derive encryption key from password
+                encryption_key = derive_key(password, salt)
                 
-                3. **Build container**
-                   - STGR header (magic, version, flags)
-                   - Metadata (salt, IV, filename, MIME)
-                   - Encrypted payload
+                # Encrypt with AES-256-GCM (generates IV internally)
+                ciphertext, iv = encrypt(payload_bytes, encryption_key, b"")
                 
-                4. **Generate positions**
-                   - SHA-256 hash of stego-key
-                   - Deterministic PRNG sequence
-                   - Unique RGB channel positions
+                # 3. Build container
+                container = create_container(
+                    payload=ciphertext,
+                    salt=salt,
+                    iv=iv,
+                    filename=filename,
+                    mime_type=mime_type
+                )
                 
-                5. **Embed in LSB**
-                   - For each bit in container
-                   - Set LSB of selected RGB channel
-                   - Preserve alpha channel
+                # 4. Generate positions
+                num_bits = len(container) * 8
+                positions = generate_positions(
+                    width=st.session_state.cover_metadata['width'],
+                    height=st.session_state.cover_metadata['height'],
+                    stego_key=stego_key,
+                    num_bits=num_bits
+                )
                 
-                6. **Output stego image**
-                   - Same dimensions as cover
-                   - Visually identical
-                   - Contains hidden data
-                """)
+                # 5. Embed in LSB
+                stego_image = embed_lsb(
+                    cover_image=st.session_state.cover_image,
+                    container_bytes=container,
+                    positions=positions
+                )
+                
+                # Store result in session state
+                st.session_state.stego_image = stego_image
+                st.session_state.embed_metadata = {
+                    'payload_size': len(payload_bytes),
+                    'container_size': len(container),
+                    'filename': filename,
+                    'mime_type': mime_type,
+                    'num_positions': len(positions)
+                }
+                
+                st.success("✓ Message embedded successfully!")
+                
+                # Show embedding statistics
+                with st.expander("📊 Embedding Statistics", expanded=False):
+                    col_a, col_b = st.columns(2)
+                    with col_a:
+                        st.metric("Payload Size", format_bytes(len(payload_bytes)))
+                        st.metric("Encrypted Size", format_bytes(len(ciphertext)))
+                    with col_b:
+                        st.metric("Container Size", format_bytes(len(container)))
+                        st.metric("Bits Embedded", f"{num_bits:,}")
+                
+        except Exception as e:
+            st.error(f"**Embedding Failed:** {str(e)}")
+            st.session_state.stego_image = None
     
-    # Step 5: Result (placeholder for now)
-    if embed_btn and can_embed:
+    # Step 5: Result
+    if hasattr(st.session_state, 'stego_image') and st.session_state.stego_image is not None:
         section_header("5. Result")
         
-        st.info("🎨 Result display will be implemented in T05 (Integration)")
-        
-        # Placeholder for result
+        # Display comparison
         col1, col2 = st.columns(2)
         
         with col1:
             st.markdown("**Cover Image**")
-            if cover_valid:
-                st.image(st.session_state.cover_image, use_container_width=True)
+            st.image(st.session_state.cover_image, use_container_width=True)
+            st.caption("Original image")
         
         with col2:
             st.markdown("**Stego Image**")
-            st.markdown("*Stego image will appear here after embedding*")
-            st.caption("Visually identical to cover, but contains hidden data")
+            st.image(st.session_state.stego_image, use_container_width=True)
+            st.caption("Image with hidden data")
         
-        # Metrics placeholder
+        # Calculate and display metrics
         st.markdown("**Quality Metrics**")
-        col_a, col_b, col_c = st.columns(3)
-        with col_a:
-            st.metric("MSE", "—", help="Mean Squared Error")
-        with col_b:
-            st.metric("PSNR", "— dB", help="Peak Signal-to-Noise Ratio")
-        with col_c:
-            st.metric("Modified Pixels", "—", help="Pixels with LSB changed")
         
-        # Download button (disabled for now)
-        st.download_button(
-            label="⬇️ Download Stego Image",
-            data=b"",  # Will be actual image bytes in T05
-            file_name="stego_image.png",
-            mime="image/png",
-            disabled=True,
-            help="Available after embedding is implemented"
-        )
+        try:
+            mse = calculate_mse(
+                st.session_state.cover_image,
+                st.session_state.stego_image
+            )
+            psnr = calculate_psnr(mse)
+            
+            col_a, col_b, col_c = st.columns(3)
+            with col_a:
+                st.metric("MSE", f"{mse:.6f}", help="Mean Squared Error (lower is better)")
+            with col_b:
+                st.metric("PSNR", f"{psnr:.2f} dB", help="Peak Signal-to-Noise Ratio (higher is better)")
+            with col_c:
+                utilization = (st.session_state.embed_metadata['container_size'] * 8 / 
+                              (st.session_state.cover_metadata['width'] * 
+                               st.session_state.cover_metadata['height'] * 3)) * 100
+                st.metric("Capacity Used", f"{utilization:.2f}%", help="Percentage of available capacity used")
+            
+            # Quality interpretation
+            if psnr >= 40:
+                quality_text = "🟢 **Excellent** - Changes imperceptible"
+            elif psnr >= 30:
+                quality_text = "🟡 **Good** - Acceptable quality"
+            else:
+                quality_text = "🔴 **Fair** - Visible artifacts possible"
+            
+            st.info(quality_text)
+            
+        except Exception as e:
+            st.warning(f"Could not calculate metrics: {str(e)}")
+        
+        # Download stego image
+        try:
+            # Convert PIL Image to bytes for download
+            img_bytes = io.BytesIO()
+            st.session_state.stego_image.save(img_bytes, format='PNG')
+            img_bytes.seek(0)
+            
+            st.download_button(
+                label="⬇️ Download Stego Image",
+                data=img_bytes,
+                file_name="stego_image.png",
+                mime="image/png",
+                help="Download the image with hidden data"
+            )
+            
+            st.caption("⚠️ **Important:** Keep your password and stego-key safe. You'll need both to extract the hidden message.")
+            
+        except Exception as e:
+            st.error(f"Could not prepare download: {str(e)}")
     
     footer()

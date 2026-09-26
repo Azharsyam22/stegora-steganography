@@ -7,7 +7,7 @@ Author: Hana (247006111170)
 import pytest
 import numpy as np
 from PIL import Image
-from stegora.image import (
+from backend.image import (
     calculate_mse,
     calculate_psnr,
     calculate_metrics,

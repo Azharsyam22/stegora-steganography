@@ -2,7 +2,7 @@
 Tests for steganography capacity calculations
 """
 import pytest
-from stegora.stego.capacity import (
+from backend.stego.capacity import (
     calculate_raw_capacity,
     calculate_usable_capacity,
     check_payload_capacity,

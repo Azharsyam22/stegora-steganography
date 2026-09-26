@@ -4,7 +4,7 @@ Note: These are structural tests, not functional tests
 Functional tests will be added when T07-T14 are implemented
 """
 import pytest
-from pages import embed, extract
+from frontend.pages import embed, extract
 
 
 class TestEmbedPage:
@@ -18,8 +18,8 @@ class TestEmbedPage:
     def test_embed_imports(self):
         """Test that required modules are imported"""
         # Check imports don't raise errors
-        from stegora.image.io import validate_and_load_cover_image
-        from stegora.stego.capacity import calculate_raw_capacity
+        from backend.image.io import validate_and_load_cover_image
+        from backend.stego.capacity import calculate_raw_capacity
         assert callable(validate_and_load_cover_image)
         assert callable(calculate_raw_capacity)
 
@@ -34,7 +34,7 @@ class TestExtractPage:
     
     def test_extract_imports(self):
         """Test that required modules are imported"""
-        from stegora.image.io import validate_and_load_cover_image
+        from backend.image.io import validate_and_load_cover_image
         assert callable(validate_and_load_cover_image)
 
 
@@ -81,7 +81,7 @@ class TestWorkspaceIntegration:
 @pytest.mark.unit
 def test_ui_components_available():
     """Test that UI components used by pages are available"""
-    from stegora.ui.components import (
+    from frontend.ui.components import (
         page_title,
         section_header,
         muted_text,

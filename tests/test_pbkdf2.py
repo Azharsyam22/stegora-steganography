@@ -5,7 +5,7 @@ Author: Hana (247006111170)
 """
 
 import pytest
-from stegora.crypto.pbkdf2 import (
+from backend.crypto.pbkdf2 import (
     derive_key,
     derive_key_with_new_salt,
     generate_salt,

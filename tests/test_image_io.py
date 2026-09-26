@@ -4,7 +4,7 @@ Tests for image I/O and validation
 import pytest
 from PIL import Image
 import io
-from stegora.image.io import (
+from backend.image.io import (
     validate_image_format,
     validate_image_mode,
     load_image,

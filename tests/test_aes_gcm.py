@@ -5,7 +5,7 @@ Author: Hana (247006111170)
 """
 
 import pytest
-from stegora.crypto import (
+from backend.crypto import (
     encrypt,
     decrypt,
     encrypt_text,

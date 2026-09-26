@@ -2,7 +2,7 @@
 Test UI components and theme
 """
 import pytest
-from stegora.ui import components, theme
+from frontend.ui import components, theme
 
 
 class TestTheme:

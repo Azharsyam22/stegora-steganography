@@ -13,11 +13,11 @@ st.set_page_config(
 )
 
 # Apply custom theme
-from stegora.ui.theme import apply_theme
+from frontend.ui.theme import apply_theme
 apply_theme()
 
 # Import pages
-from pages import embed, extract, analyze
+from frontend.pages import embed, extract, analyze
 
 # Define pages
 pages = [

@@ -3,7 +3,7 @@ Stegora - Analyze Page
 Steganalysis tools and metrics
 """
 import streamlit as st
-from stegora.ui.components import (
+from frontend.ui.components import (
     page_title, section_header, muted_text, footer
 )
 
