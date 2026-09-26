@@ -3,74 +3,107 @@ Stegora - Embed Page
 Hide text or file inside cover image
 """
 import streamlit as st
+from stegora.ui.components import (
+    page_title, section_header, muted_text,
+    credentials_input, footer, status_badge
+)
 
 
 def show():
     """Embed page UI"""
-    st.title("📥 Embed Message")
-    st.markdown("Hide text or file inside a cover image using LSB steganography.")
+    page_title(
+        "Embed Message",
+        "Hide text or file inside a cover image using LSB steganography"
+    )
     
-    # Cover image upload
-    st.subheader("1. Upload Cover Image")
+    # Step 1: Cover image
+    section_header("1. Upload Cover Image")
     cover_file = st.file_uploader(
         "Choose PNG or BMP image",
         type=["png", "bmp"],
-        key="embed_cover"
+        key="embed_cover",
+        help="Select a lossless image format for embedding"
     )
     
     if cover_file:
-        st.success(f"✓ Loaded: {cover_file.name}")
-        # TODO: Display image and calculate capacity
-        st.info("⚠️ Capacity calculation not yet implemented")
+        col1, col2 = st.columns([1, 2])
+        
+        with col1:
+            st.image(cover_file, caption="Cover Image", use_container_width=True)
+        
+        with col2:
+            st.success(f"Loaded: **{cover_file.name}**")
+            st.info("Capacity calculation will be implemented in next task")
+            muted_text("Image analysis requires stegora.image module")
     
-    # Payload input
-    st.subheader("2. Choose Payload")
+    # Step 2: Payload
+    section_header("2. Choose Payload")
+    
     payload_type = st.radio(
         "Payload type",
         ["Text", "File"],
-        horizontal=True
+        horizontal=True,
+        help="Select whether to hide text or a file"
     )
+    
+    payload_size = 0
+    payload_text = None
+    payload_file = None
     
     if payload_type == "Text":
         payload_text = st.text_area(
             "Enter secret message",
             placeholder="Your secret message here...",
-            height=150
+            height=150,
+            help="Text will be encrypted before embedding"
         )
+        if payload_text:
+            payload_size = len(payload_text.encode('utf-8'))
+            muted_text(f"Text size: {payload_size} bytes")
     else:
         payload_file = st.file_uploader(
             "Choose file to hide",
-            key="embed_payload_file"
+            key="embed_payload_file",
+            help="Small files work best (< 100 KB)"
         )
+        if payload_file:
+            payload_size = payload_file.size
+            st.success(f"File: **{payload_file.name}** ({payload_size:,} bytes)")
     
-    # Credentials
-    st.subheader("3. Security Credentials")
-    col1, col2 = st.columns(2)
+    # Step 3: Credentials
+    password, stego_key = credentials_input("embed")
     
-    with col1:
-        password = st.text_input(
-            "Password (for encryption)",
-            type="password",
-            help="Used to encrypt the payload with AES-256-GCM"
-        )
+    # Step 4: Embed
+    section_header("4. Embed Message")
+    
+    # Show warnings if missing inputs
+    warnings = []
+    if not cover_file:
+        warnings.append("Upload a cover image")
+    if payload_type == "Text" and not payload_text:
+        warnings.append("Enter text message")
+    elif payload_type == "File" and not payload_file:
+        warnings.append("Upload payload file")
+    if not password:
+        warnings.append("Enter password")
+    if not stego_key:
+        warnings.append("Enter stego-key")
+    
+    if warnings:
+        st.warning(f"Required: {', '.join(warnings)}")
+    
+    col1, col2, col3 = st.columns([2, 1, 2])
     
     with col2:
-        stego_key = st.text_input(
-            "Stego-key (for positions)",
-            type="password",
-            help="Determines pixel positions for embedding"
+        embed_btn = st.button(
+            "Embed Message",
+            type="primary",
+            use_container_width=True,
+            disabled=bool(warnings)
         )
     
-    # Embed button
-    st.subheader("4. Embed")
-    if st.button("🔒 Embed Message", type="primary", use_container_width=True):
-        if not cover_file:
-            st.error("❌ Please upload a cover image")
-        elif not password or not stego_key:
-            st.error("❌ Please provide both password and stego-key")
-        else:
-            st.warning("⚠️ Embed functionality not yet implemented")
-            # TODO: Implement embed pipeline
+    if embed_btn:
+        st.info("Embed functionality not yet implemented (requires T10-T14)")
+        muted_text("Next tasks: Capacity calculator, Container, PRNG, AES-GCM, LSB embedding")
     
-    st.markdown("---")
-    st.caption("Stegora - LSB Steganography with AES-256-GCM")
+    footer()
