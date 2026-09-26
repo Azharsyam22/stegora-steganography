@@ -25,15 +25,10 @@ class TestTheme:
     
     def test_custom_css_exists(self):
         """Test that custom CSS is defined"""
-        assert theme.CUSTOM_CSS_LIGHT is not None
-        assert isinstance(theme.CUSTOM_CSS_LIGHT, str)
-        assert "<style>" in theme.CUSTOM_CSS_LIGHT
-        assert ".stegora-card" in theme.CUSTOM_CSS_LIGHT
-        
-        assert theme.CUSTOM_CSS_DARK is not None
-        assert isinstance(theme.CUSTOM_CSS_DARK, str)
-        assert "<style>" in theme.CUSTOM_CSS_DARK
-        assert ".stegora-card" in theme.CUSTOM_CSS_DARK
+        assert theme.CUSTOM_CSS is not None
+        assert isinstance(theme.CUSTOM_CSS, str)
+        assert "<style>" in theme.CUSTOM_CSS
+        assert ".stegora-card" in theme.CUSTOM_CSS
 
 
 class TestComponents:
@@ -72,17 +67,12 @@ def test_theme_color_count():
     ]
     
     for color_name in required_colors:
-        assert color_name in theme.COLORS_LIGHT, f"Missing color in LIGHT: {color_name}"
-        assert theme.COLORS_LIGHT[color_name].startswith("#"), f"Invalid color format: {color_name}"
-        
-        assert color_name in theme.COLORS_DARK, f"Missing color in DARK: {color_name}"
-        assert theme.COLORS_DARK[color_name].startswith("#"), f"Invalid color format: {color_name}"
+        assert color_name in theme.COLORS, f"Missing color: {color_name}"
+        assert theme.COLORS[color_name].startswith("#"), f"Invalid color format: {color_name}"
 
 
 @pytest.mark.unit
 def test_theme_functions():
     """Test theme utility functions"""
     assert callable(theme.apply_theme)
-    assert callable(theme.toggle_theme)
-    assert callable(theme.get_current_theme)
     assert callable(theme.get_color)

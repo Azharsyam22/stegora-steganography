@@ -1,1 +1,1 @@
-"""Image I/O and metrics"""
+"""Image processing modules"""

@@ -1,1 +1,1 @@
-"""Steganography core: capacity, container, LSB, positions"""
+"""Steganography core modules"""
