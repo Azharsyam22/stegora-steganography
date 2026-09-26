@@ -17,9 +17,9 @@ from pages import embed, extract, analyze
 
 # Define pages
 pages = [
-    st.Page(embed.show, title="Embed", icon="📥"),
-    st.Page(extract.show, title="Extract", icon="📤"),
-    st.Page(analyze.show, title="Analyze", icon="📊"),
+    st.Page(embed.show, title="Embed", icon="📥", url_path="embed"),
+    st.Page(extract.show, title="Extract", icon="📤", url_path="extract"),
+    st.Page(analyze.show, title="Analyze", icon="📊", url_path="analyze"),
 ]
 
 # Navigation
