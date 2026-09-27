@@ -1,0 +1,30 @@
+﻿============================= test session starts =============================
+platform win32 -- Python 3.13.15, pytest-8.4.2, pluggy-1.6.0 -- C:\NGODING\stegora-steganography\.venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: C:\NGODING\stegora-steganography
+configfile: pytest.ini
+plugins: anyio-4.15.1
+collecting ... collected 20 items
+
+tests/test_lsb_extraction.py::TestLSBExtraction::test_extract_lsb_rgb_success PASSED [  5%]
+tests/test_lsb_extraction.py::TestLSBExtraction::test_extract_lsb_rgba_success PASSED [ 10%]
+tests/test_lsb_extraction.py::TestLSBExtraction::test_round_trip_various_payloads PASSED [ 15%]
+tests/test_lsb_extraction.py::TestLSBExtraction::test_round_trip_large_payload PASSED [ 20%]
+tests/test_lsb_extraction.py::TestLSBExtraction::test_extract_with_wrong_stego_key_produces_garbage PASSED [ 25%]
+tests/test_lsb_extraction.py::TestLSBExtraction::test_extract_preserves_image_unchanged PASSED [ 30%]
+tests/test_lsb_extraction.py::TestLSBExtraction::test_extract_bit_accuracy PASSED [ 35%]
+tests/test_lsb_extraction.py::TestLSBExtractionValidation::test_reject_invalid_image_type PASSED [ 40%]
+tests/test_lsb_extraction.py::TestLSBExtractionValidation::test_reject_unsupported_mode PASSED [ 45%]
+tests/test_lsb_extraction.py::TestLSBExtractionValidation::test_reject_zero_num_bytes PASSED [ 50%]
+tests/test_lsb_extraction.py::TestLSBExtractionValidation::test_reject_negative_num_bytes PASSED [ 55%]
+tests/test_lsb_extraction.py::TestLSBExtractionValidation::test_reject_insufficient_positions PASSED [ 60%]
+tests/test_lsb_extraction.py::TestLSBExtractionValidation::test_reject_out_of_bounds_coordinates PASSED [ 65%]
+tests/test_lsb_extraction.py::TestLSBExtractionValidation::test_reject_alpha_channel_index PASSED [ 70%]
+tests/test_lsb_extraction.py::TestRoundTripIntegration::test_round_trip_maintains_quality_metrics PASSED [ 75%]
+tests/test_lsb_extraction.py::TestRoundTripIntegration::test_round_trip_multiple_payloads_same_image PASSED [ 80%]
+tests/test_lsb_extraction.py::TestRoundTripIntegration::test_round_trip_preserves_binary_data PASSED [ 85%]
+tests/test_lsb_extraction.py::TestRoundTripIntegration::test_deterministic_extraction_same_key PASSED [ 90%]
+tests/test_lsb_extraction.py::TestWrongKeyFailure::test_wrong_key_produces_different_data PASSED [ 95%]
+tests/test_lsb_extraction.py::TestWrongKeyFailure::test_wrong_key_high_bit_error_rate PASSED [100%]
+
+============================= 20 passed in 0.95s ==============================

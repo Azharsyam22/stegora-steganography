@@ -142,14 +142,11 @@ def test_extract_pipeline_invalid_magic(sample_cover_image):
 
 def test_embed_extract_round_trip_text(sample_cover_image):
     """Test complete embed-extract round trip with text message"""
-    # NOTE: This test will pass validation but LSB is stub, so extraction will fail
-    # This test documents expected behavior once T10-T11 are implemented
-    
     payload = b"Hello, World! This is a secret message."
     password = "password123"
     stego_key = "stegokey123"
     
-    # Embed should succeed (creates container, but LSB is stub)
+    # Embed
     stego_image, embed_meta = embed_pipeline(
         cover_image=sample_cover_image,
         payload_bytes=payload,
@@ -165,14 +162,20 @@ def test_embed_extract_round_trip_text(sample_cover_image):
     assert embed_meta['mime_type'] == "text/plain"
     assert stego_image.size == sample_cover_image.size
     
-    # Extract will fail because LSB is stub (returns zeros)
-    # Once T10-T11 are implemented, this should pass:
-    # extracted_payload, extract_meta = extract_pipeline(
-    #     stego_image=stego_image,
-    #     password=password,
-    #     stego_key=stego_key
-    # )
-    # assert extracted_payload == payload
+    # Extract (T11 - now implemented!)
+    extracted_payload, extract_meta = extract_pipeline(
+        stego_image=stego_image,
+        password=password,
+        stego_key=stego_key
+    )
+    
+    # Verify extraction
+    assert extracted_payload == payload
+    assert extract_meta['plaintext_size'] == len(payload)
+    assert extract_meta['filename'] == "message.txt"
+    assert extract_meta['mime_type'] == "text/plain"
+    assert extract_meta['magic_valid'] is True
+    assert extract_meta['auth_valid'] is True
 
 
 def test_embed_metadata_structure(sample_cover_image):

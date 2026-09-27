@@ -106,7 +106,7 @@ def extract_lsb(
     num_bytes: int
 ) -> bytes:
     """
-    Extract container bytes from stego image using 1-bit RGB LSB
+    Extract container bytes from stego image using 1-bit RGB LSB.
     
     Args:
         stego_image: PIL Image with embedded data
@@ -117,70 +117,64 @@ def extract_lsb(
         Extracted container bytes
         
     Raises:
-        LSBError: If extraction fails
+        LSBError: If extraction fails or inputs are invalid
         
-    TODO (T11 - Naufal): Implement actual LSB extraction
-    - Convert image to numpy array
-    - For each position, read LSB
-    - Collect bits into bytes
-    - Return byte array
-    
-    Algorithm:
-        bits = []
-        for each position:
-            (x, y, channel) = position
-            value = image[y, x, channel]
-            bit = value & 0x01  # Extract LSB
-            bits.append(bit)
-        
-        Convert bits to bytes and return
+    Author: Naufal (247006111158)
+    Task: T11 - 1-bit RGB LSB Extraction
     """
     # Validate inputs
+    if not isinstance(stego_image, Image.Image):
+        raise LSBError("stego_image must be a PIL Image instance")
+    
     if stego_image.mode not in ('RGB', 'RGBA'):
-        raise LSBError(f"Unsupported image mode: {stego_image.mode}")
+        raise LSBError(
+            f"Unsupported image mode '{stego_image.mode}'. "
+            "Only 'RGB' and 'RGBA' modes are supported for 1-bit RGB LSB."
+        )
+    
+    if num_bytes <= 0:
+        raise LSBError("num_bytes must be positive")
     
     num_bits = num_bytes * 8
     
     if len(positions) < num_bits:
         raise LSBError(
-            f"Not enough positions: need {num_bits}, have {len(positions)}"
+            f"Not enough positions: need {num_bits} bit positions, "
+            f"but only {len(positions)} provided"
         )
     
-    # Convert to numpy array
+    width, height = stego_image.size
+    pos_subset = positions[:num_bits]
+    
+    # Validate coordinate boundaries
+    for idx, (x, y, channel) in enumerate(pos_subset):
+        if x < 0 or x >= width or y < 0 or y >= height:
+            raise LSBError(
+                f"Position {idx} has coordinates ({x}, {y}) "
+                f"outside image dimensions ({width}x{height})"
+            )
+        if channel < 0 or channel > 2:
+            raise LSBError(
+                f"Position {idx} has invalid channel {channel}. "
+                "Only RGB channels (0, 1, 2) allowed; Alpha (3) is forbidden"
+            )
+    
+    # Convert image to numpy array
     pixels = np.array(stego_image)
     
-    # STUB: Return dummy bytes
-    # TODO (T11): Implement actual LSB extraction
-    bits = []
+    # Extract coordinate arrays for vectorized access
+    xs = np.fromiter((p[0] for p in pos_subset), dtype=np.intp, count=num_bits)
+    ys = np.fromiter((p[1] for p in pos_subset), dtype=np.intp, count=num_bits)
+    cs = np.fromiter((p[2] for p in pos_subset), dtype=np.intp, count=num_bits)
     
-    """
-    # TODO (T11): Uncomment and implement this loop
-    for bit_index in range(num_bits):
-        x, y, channel = positions[bit_index]
-        
-        # Read LSB
-        value = pixels[y, x, channel]
-        bit = value & 0x01
-        
-        bits.append(bit)
-    """
+    # Extract LSB from each position (vectorized operation)
+    bits = pixels[ys, xs, cs] & 0x01
     
-    # STUB: Return zeros for now
-    # TODO (T11): Convert bits to bytes
-    """
-    # Convert bits to bytes
-    container_bytes = bytearray()
-    for byte_index in range(num_bytes):
-        byte_value = 0
-        for bit_index in range(8):
-            bit = bits[byte_index * 8 + bit_index]
-            byte_value = (byte_value << 1) | bit
-        container_bytes.append(byte_value)
+    # Convert bit array to bytes (MSB first, matching embed order)
+    # NumPy's packbits expects bits in MSB order
+    container_bytes = np.packbits(bits)
     
-    return bytes(container_bytes)
-    """
-    
-    return bytes(num_bytes)  # STUB: return zeros
+    return bytes(container_bytes[:num_bytes])
 
 
 def verify_alpha_preservation(
