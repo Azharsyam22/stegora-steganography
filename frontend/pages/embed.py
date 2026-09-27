@@ -16,7 +16,9 @@ from backend.stego.capacity import (
     calculate_raw_capacity, 
     calculate_usable_capacity,
     check_payload_capacity,
-    format_bytes
+    validate_payload_capacity,
+    format_bytes,
+    PayloadCapacityExceededError
 )
 from backend.crypto.pbkdf2 import derive_key
 from backend.crypto.aes_gcm import encrypt
@@ -152,6 +154,8 @@ def show():
                     payload_fits = True
                 else:
                     st.error(f"⚠️ Payload too large! Required: {format_bytes(capacity_check['required_bytes'])}, Available: {format_bytes(capacity_check['available_bytes'])}")
+                    if capacity_check.get('rejection_reason'):
+                        st.caption(f"ℹ️ {capacity_check['rejection_reason']}")
                     payload_fits = False
     else:
         payload_file = st.file_uploader(
@@ -177,6 +181,8 @@ def show():
                     payload_fits = True
                 else:
                     st.error(f"⚠️ File too large! Required: {format_bytes(capacity_check['required_bytes'])}, Available: {format_bytes(capacity_check['available_bytes'])}")
+                    if capacity_check.get('rejection_reason'):
+                        st.caption(f"ℹ️ {capacity_check['rejection_reason']}")
                     payload_fits = False
     
     # Step 3: Credentials
@@ -250,6 +256,13 @@ def show():
                     payload_bytes = payload_file.read()
                     filename = payload_file.name
                     mime_type = payload_file.type or "application/octet-stream"
+                
+                # Validate capacity before expensive encryption and image mutation (Rule 8)
+                validate_payload_capacity(
+                    width=st.session_state.cover_metadata['width'],
+                    height=st.session_state.cover_metadata['height'],
+                    payload_size=len(payload_bytes)
+                )
                 
                 # 2. Encrypt payload
                 # Generate random salt and IV

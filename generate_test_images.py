@@ -4,6 +4,14 @@ Run: python generate_test_images.py
 """
 from PIL import Image
 import os
+import sys
+
+# Handle Windows terminal encoding
+if sys.stdout.encoding and sys.stdout.encoding.lower() != 'utf-8':
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except Exception:
+        pass
 
 # Create test_images directory
 os.makedirs('test_images', exist_ok=True)

@@ -6,7 +6,13 @@ from backend.stego.capacity import (
     calculate_raw_capacity,
     calculate_usable_capacity,
     check_payload_capacity,
-    format_bytes
+    validate_payload_capacity,
+    calculate_exact_container_overhead,
+    format_bytes,
+    CapacityError,
+    PayloadCapacityExceededError,
+    DEFAULT_CONTAINER_OVERHEAD,
+    MINIMUM_CONTAINER_OVERHEAD,
 )
 
 from backend.stego.container import (
@@ -36,7 +42,13 @@ __all__ = [
     'calculate_raw_capacity',
     'calculate_usable_capacity',
     'check_payload_capacity',
+    'validate_payload_capacity',
+    'calculate_exact_container_overhead',
     'format_bytes',
+    'CapacityError',
+    'PayloadCapacityExceededError',
+    'DEFAULT_CONTAINER_OVERHEAD',
+    'MINIMUM_CONTAINER_OVERHEAD',
     
     # Container
     'create_container',

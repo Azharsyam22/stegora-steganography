@@ -71,6 +71,18 @@ def embed_pipeline(
         
         width, height = cover_image.size
         
+        # Preflight capacity check before heavy cryptographic operations (reject oversized early)
+        preflight_check = check_payload_capacity(
+            width=width,
+            height=height,
+            payload_size=len(payload_bytes)
+        )
+        if not preflight_check['fits']:
+            raise EmbedError(
+                f"Payload too large: need {preflight_check['required_bytes']} bytes, "
+                f"have {preflight_check['available_bytes']} bytes"
+            )
+        
         # 1. Generate salt and IV
         salt = secrets.token_bytes(16)
         
