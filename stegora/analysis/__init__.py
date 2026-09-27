@@ -1,7 +1,7 @@
 """
 Stegora Analysis Module
 
-Provides histogram analysis and LSB plane visualization for steganalysis.
+Provides histogram analysis, LSB plane visualization, and robustness testing.
 """
 
 from .histogram import (
@@ -22,6 +22,16 @@ from .lsb_plane import (
     analyze_bit_plane_complexity
 )
 
+from .robustness import (
+    test_jpeg_compression,
+    test_jpeg_multiple_qualities,
+    calculate_bit_error_rate,
+    simulate_bit_flip_attack,
+    simulate_truncation_attack,
+    create_malformed_header,
+    test_stego_resilience
+)
+
 __all__ = [
     # Histogram analysis
     'calculate_histogram',
@@ -37,5 +47,14 @@ __all__ = [
     'analyze_lsb_randomness',
     'compare_lsb_planes',
     'create_lsb_difference_visual',
-    'analyze_bit_plane_complexity'
+    'analyze_bit_plane_complexity',
+    
+    # Robustness testing
+    'test_jpeg_compression',
+    'test_jpeg_multiple_qualities',
+    'calculate_bit_error_rate',
+    'simulate_bit_flip_attack',
+    'simulate_truncation_attack',
+    'create_malformed_header',
+    'test_stego_resilience'
 ]
