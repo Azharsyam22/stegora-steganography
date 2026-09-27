@@ -9,6 +9,10 @@ import struct
 from frontend.ui.components import (
     page_title, section_header, muted_text, footer
 )
+from frontend.ui.state import (
+    init_session_state, save_extract_result, save_extract_error,
+    is_demo_mode, get_demo_credentials, get_stored_credentials
+)
 from backend.image.io import validate_and_load_cover_image, ImageValidationError
 from backend.stego.capacity import format_bytes
 from backend.stego.positions import generate_positions
@@ -87,21 +91,41 @@ def show():
     
     st.markdown("Enter the same credentials used during embedding:")
     
+    # Demo mode hint
+    if is_demo_mode():
+        demo_pass, demo_key = get_demo_credentials()
+        st.info(f"**Demo Mode Active** - Correct credentials: `{demo_pass}` / `{demo_key}`")
+    
+    # Get stored credentials (from last embed)
+    stored_pass, stored_key = get_stored_credentials()
+    
     col1, col2 = st.columns(2)
     with col1:
+        default_password = demo_pass if is_demo_mode() else stored_pass
         password = st.text_input(
             "Password",
             type="password",
             key="extract_password",
+            value=default_password,
             help="Same password used for encryption"
         )
     with col2:
+        default_stego_key = demo_key if is_demo_mode() else stored_key
         stego_key = st.text_input(
             "Stego-key",
             type="password",
             key="extract_stego_key",
+            value=default_stego_key,
             help="Same stego-key used for positioning"
         )
+    
+    # Wrong-key demo button
+    st.markdown("---")
+    col_a, col_b, col_c = st.columns([1, 1, 1])
+    with col_b:
+        if st.button("Try Wrong Key (Demo)", use_container_width=True, help="Demonstrate wrong stego-key failure"):
+            st.session_state.demo_wrong_key = True
+            st.rerun()
     
     # Step 3: Extract
     section_header("3. Extract Message")
@@ -121,13 +145,13 @@ def show():
         can_extract = False
     
     if warnings:
-        st.warning(f"⚠️ Required: {', '.join(warnings)}")
+        st.warning(f"Required: {', '.join(warnings)}")
     
     col1, col2, col3 = st.columns([2, 1, 2])
     
     with col2:
         extract_btn = st.button(
-            "🔓 Extract Message",
+            "Extract Message",
             type="primary",
             use_container_width=True,
             disabled=not can_extract
@@ -221,7 +245,7 @@ def show():
                 st.success("✓ Message extracted and decrypted successfully!")
                 
                 # Show extraction statistics
-                with st.expander("📊 Extraction Statistics", expanded=False):
+                with st.expander("Extraction Statistics", expanded=False):
                     col_a, col_b = st.columns(2)
                     with col_a:
                         st.metric("Container Size", format_bytes(len(container_bytes)))
@@ -293,7 +317,7 @@ def show():
             
             # Download button
             st.download_button(
-                label="⬇️ Download Recovered File",
+                label="Download Recovered File",
                 data=extracted['plaintext'],
                 file_name=extracted['filename'] or "recovered_file.bin",
                 mime=extracted['mime_type'],
@@ -312,10 +336,10 @@ def show():
         with col3:
             st.metric("Integrity", extracted['integrity'], help="Overall data integrity")
         
-        st.success("🎉 Extraction completed successfully! All verifications passed.")
+        st.success("Extraction completed successfully! All verifications passed.")
     
     # Help section
-    with st.expander("ℹ️ Extraction Tips", expanded=False):
+    with st.expander("Extraction Tips", expanded=False):
         st.markdown("""
         **For successful extraction:**
         
@@ -335,10 +359,10 @@ def show():
            - Do not convert format (PNG ↔ BMP is safe if lossless)
         
         4. **Expected outcomes**
-           - ✅ Correct credentials → Original message recovered
-           - ❌ Wrong password → Authentication failure
-           - ❌ Wrong stego-key → Garbled data or parse error
-           - ❌ Modified image → Corrupted/partial data
+           - [✓] Correct credentials → Original message recovered
+           - [X] Wrong password → Authentication failure
+           - [X] Wrong stego-key → Garbled data or parse error
+           - [X] Modified image → Corrupted/partial data
         """)
     
     footer()

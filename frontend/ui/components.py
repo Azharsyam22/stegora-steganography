@@ -202,7 +202,7 @@ def warning_list(items: list):
         items: List of warning strings
     """
     if items:
-        st.warning(f"⚠️ Required: {', '.join(items)}")
+        st.warning(f"Required: {', '.join(items)}")
 
 
 def result_placeholder(title: str, description: str):

@@ -7,7 +7,6 @@ import streamlit as st
 # Configure page
 st.set_page_config(
     page_title="Stegora | Professional Steganography",
-    page_icon="🔐",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -17,13 +16,14 @@ from frontend.ui.theme import apply_theme
 apply_theme()
 
 # Import pages
-from frontend.pages import embed, extract, analyze
+from frontend.pages import embed, extract, analyze, about
 
 # Define pages
 pages = [
     st.Page(embed.show, title="Embed", url_path="embed"),
     st.Page(extract.show, title="Extract", url_path="extract"),
     st.Page(analyze.show, title="Analyze", url_path="analyze"),
+    st.Page(about.show, title="About", url_path="about"),
 ]
 
 # Navigation
@@ -41,7 +41,8 @@ st.sidebar.caption("**NAVIGATION**")
 st.sidebar.markdown("""
 **Embed** — Hide messages in images  
 **Extract** — Recover hidden messages  
-**Analyze** — Steganalysis tools
+**Analyze** — Steganalysis tools  
+**About** — System information
 """)
 
 st.sidebar.markdown("---")

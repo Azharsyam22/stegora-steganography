@@ -10,6 +10,10 @@ from PIL import Image
 from frontend.ui.components import (
     page_title, section_header, muted_text, footer
 )
+from frontend.ui.state import (
+    init_session_state, save_embed_result, 
+    is_demo_mode, get_demo_credentials, store_credentials
+)
 from backend.image.io import validate_and_load_cover_image, ImageValidationError, save_image
 from backend.image.metrics import calculate_mse, calculate_psnr
 from backend.stego.capacity import (
@@ -91,7 +95,7 @@ def show():
                     st.metric("Height", f"{metadata['height']} px")
                 
                 if metadata['has_alpha']:
-                    st.caption("⚠️ Alpha channel will be preserved (not used for embedding)")
+                    st.caption("Alpha channel will be preserved (not used for embedding)")
                 
                 # Capacity info
                 st.markdown("**Steganography Capacity**")
@@ -153,9 +157,9 @@ def show():
                     st.success(f"✓ Payload fits ({capacity_check['utilization_percent']:.1f}% capacity utilization)")
                     payload_fits = True
                 else:
-                    st.error(f"⚠️ Payload too large! Required: {format_bytes(capacity_check['required_bytes'])}, Available: {format_bytes(capacity_check['available_bytes'])}")
+                    st.error(f"Payload too large! Required: {format_bytes(capacity_check['required_bytes'])}, Available: {format_bytes(capacity_check['available_bytes'])}")
                     if capacity_check.get('rejection_reason'):
-                        st.caption(f"ℹ️ {capacity_check['rejection_reason']}")
+                        st.caption(f"{capacity_check['rejection_reason']}")
                     payload_fits = False
     else:
         payload_file = st.file_uploader(
@@ -180,27 +184,36 @@ def show():
                     st.success(f"✓ File fits ({capacity_check['utilization_percent']:.1f}% capacity utilization)")
                     payload_fits = True
                 else:
-                    st.error(f"⚠️ File too large! Required: {format_bytes(capacity_check['required_bytes'])}, Available: {format_bytes(capacity_check['available_bytes'])}")
+                    st.error(f"File too large! Required: {format_bytes(capacity_check['required_bytes'])}, Available: {format_bytes(capacity_check['available_bytes'])}")
                     if capacity_check.get('rejection_reason'):
-                        st.caption(f"ℹ️ {capacity_check['rejection_reason']}")
+                        st.caption(f"{capacity_check['rejection_reason']}")
                     payload_fits = False
     
     # Step 3: Credentials
     section_header("3. Security Credentials")
     
+    # Demo mode hint
+    if is_demo_mode():
+        demo_pass, demo_key = get_demo_credentials()
+        st.info(f"**Demo Mode Active** - Credentials: `{demo_pass}` / `{demo_key}`")
+    
     col1, col2 = st.columns(2)
     with col1:
+        default_password = get_demo_credentials()[0] if is_demo_mode() else ""
         password = st.text_input(
             "Password",
             type="password",
             key="embed_password",
+            value=default_password,
             help="AES-256-GCM encryption password"
         )
     with col2:
+        default_stego_key = get_demo_credentials()[1] if is_demo_mode() else ""
         stego_key = st.text_input(
             "Stego-key",
             type="password",
             key="embed_stego_key",
+            value=default_stego_key,
             help="Deterministic position seed"
         )
     
@@ -231,13 +244,13 @@ def show():
         can_embed = False
     
     if warnings:
-        st.warning(f"⚠️ Required: {', '.join(warnings)}")
+        st.warning(f"Required: {', '.join(warnings)}")
     
     col1, col2, col3 = st.columns([2, 1, 2])
     
     with col2:
         embed_btn = st.button(
-            "🔒 Embed Message",
+            "Embed Message",
             type="primary",
             use_container_width=True,
             disabled=not can_embed
@@ -299,20 +312,22 @@ def show():
                     positions=positions
                 )
                 
-                # Store result in session state
-                st.session_state.stego_image = stego_image
-                st.session_state.embed_metadata = {
+                # Store credentials for later use (convenience)
+                store_credentials(password, stego_key)
+                
+                # Store result in session state using state manager
+                save_embed_result(stego_image, {
                     'payload_size': len(payload_bytes),
                     'container_size': len(container),
                     'filename': filename,
                     'mime_type': mime_type,
                     'num_positions': len(positions)
-                }
+                })
                 
                 st.success("✓ Message embedded successfully!")
                 
                 # Show embedding statistics
-                with st.expander("📊 Embedding Statistics", expanded=False):
+                with st.expander("Embedding Statistics", expanded=False):
                     col_a, col_b = st.columns(2)
                     with col_a:
                         st.metric("Payload Size", format_bytes(len(payload_bytes)))
@@ -370,11 +385,11 @@ def show():
             
             # Quality interpretation
             if psnr == float('inf') or psnr >= 50:
-                quality_text = "🟢 **Excellent** - Changes imperceptible"
+                quality_text = "**Excellent** - Changes imperceptible"
             elif psnr >= 30:
-                quality_text = "🟡 **Good** - Acceptable quality"
+                quality_text = "**Good** - Acceptable quality"
             else:
-                quality_text = "🔴 **Fair** - Visible artifacts possible"
+                quality_text = "**Fair** - Visible artifacts possible"
             
             st.info(quality_text)
             
@@ -389,14 +404,14 @@ def show():
             img_bytes.seek(0)
             
             st.download_button(
-                label="⬇️ Download Stego Image",
+                label="Download Stego Image",
                 data=img_bytes,
                 file_name="stego_image.png",
                 mime="image/png",
                 help="Download the image with hidden data"
             )
             
-            st.caption("⚠️ **Important:** Keep your password and stego-key safe. You'll need both to extract the hidden message.")
+            st.caption("**Important:** Keep your password and stego-key safe. You'll need both to extract the hidden message.")
             
         except Exception as e:
             st.error(f"Could not prepare download: {str(e)}")
