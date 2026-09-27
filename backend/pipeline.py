@@ -144,7 +144,7 @@ def embed_pipeline(
         # 8. Calculate metrics
         try:
             mse = calculate_mse(cover_image, stego_image)
-            psnr = calculate_psnr(mse)
+            psnr = calculate_psnr(cover_image, stego_image, mse=mse)
         except Exception as e:
             # Metrics failure is not critical
             mse = None

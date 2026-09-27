@@ -17,7 +17,7 @@ Task: T15 - MSE & PSNR Metrics
 
 import numpy as np
 from PIL import Image
-from typing import Union, Tuple
+from typing import Union, Tuple, Optional
 
 
 # Constants
@@ -97,9 +97,9 @@ def calculate_mse(cover: Union[Image.Image, np.ndarray],
     return float(mse)
 
 
-def calculate_psnr(cover: Union[Image.Image, np.ndarray], 
-                   stego: Union[Image.Image, np.ndarray],
-                   mse: float = None) -> float:
+def calculate_psnr(cover: Union[Image.Image, np.ndarray, float], 
+                   stego: Optional[Union[Image.Image, np.ndarray]] = None,
+                   mse: Optional[float] = None) -> float:
     """Calculate Peak Signal-to-Noise Ratio between cover and stego images.
     
     PSNR measures image quality in decibels (dB).
@@ -119,8 +119,8 @@ def calculate_psnr(cover: Union[Image.Image, np.ndarray],
         - PSNR = ∞: Identical images
     
     Args:
-        cover: Cover image (PIL Image or numpy array)
-        stego: Stego image (PIL Image or numpy array)
+        cover: Cover image (PIL Image or numpy array) OR pre-calculated float MSE
+        stego: Stego image (PIL Image or numpy array), optional if MSE is provided
         mse: Pre-calculated MSE (optional). If None, will calculate MSE first.
     
     Returns:
@@ -140,8 +140,11 @@ def calculate_psnr(cover: Union[Image.Image, np.ndarray],
         >>> if psnr >= 30:
         >>>     print("Quality is acceptable (≥30 dB)")
     """
-    # Calculate MSE if not provided
-    if mse is None:
+    if isinstance(cover, (int, float, np.floating, np.integer)):
+        mse = float(cover)
+    elif mse is None:
+        if stego is None:
+            raise MetricsError("calculate_psnr requires both cover and stego images, or an MSE value")
         mse = calculate_mse(cover, stego)
     
     # Handle special case: identical images (MSE = 0)

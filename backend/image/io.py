@@ -25,7 +25,9 @@ def validate_image_format(image: Image.Image) -> None:
     """
     if image.format not in ('PNG', 'BMP'):
         raise ImageValidationError(
-            f"Unsupported format '{image.format}'. Only PNG and BMP are supported."
+            f"Unsupported format '{image.format}'. Only PNG and BMP are supported. "
+            "LSB steganography requires lossless image formats (PNG/BMP) because "
+            "JPEG lossy compression destroys hidden LSB data."
         )
 
 

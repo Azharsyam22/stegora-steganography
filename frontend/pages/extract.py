@@ -35,10 +35,10 @@ def show():
     # Step 1: Stego image
     section_header("1. Upload Stego Image")
     stego_file = st.file_uploader(
-        "Choose PNG or BMP image with hidden message",
-        type=["png", "bmp"],
+        "Choose image (PNG, BMP, JPG/JPEG)",
+        type=["png", "bmp", "jpg", "jpeg"],
         key="extract_stego",
-        help="Select the image containing the hidden message"
+        help="Select the image containing the hidden message (PNG/BMP required). JPG/JPEG will be checked by format validation."
     )
     
     stego_valid = False

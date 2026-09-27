@@ -23,7 +23,7 @@ def show():
     with col1:
         cover_file = st.file_uploader(
             "Cover image (original)",
-            type=["png", "bmp"],
+            type=["png", "bmp", "jpg", "jpeg"],
             key="analyze_cover",
             help="Original image before embedding"
         )
@@ -34,7 +34,7 @@ def show():
     with col2:
         stego_file = st.file_uploader(
             "Stego image (with message)",
-            type=["png", "bmp"],
+            type=["png", "bmp", "jpg", "jpeg"],
             key="analyze_stego",
             help="Image after embedding"
         )

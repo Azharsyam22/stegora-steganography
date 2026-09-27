@@ -37,10 +37,10 @@ def show():
     # Step 1: Cover image
     section_header("1. Upload Cover Image")
     cover_file = st.file_uploader(
-        "Choose PNG or BMP image",
-        type=["png", "bmp"],
+        "Choose image (PNG, BMP, JPG/JPEG)",
+        type=["png", "bmp", "jpg", "jpeg"],
         key="embed_cover",
-        help="Select a lossless image format for embedding"
+        help="Select a lossless image format (PNG/BMP) for embedding. JPG/JPEG will be checked by format validation."
     )
     
     cover_valid = False
@@ -350,13 +350,18 @@ def show():
                 st.session_state.cover_image,
                 st.session_state.stego_image
             )
-            psnr = calculate_psnr(mse)
+            psnr = calculate_psnr(
+                st.session_state.cover_image,
+                st.session_state.stego_image,
+                mse=mse
+            )
             
             col_a, col_b, col_c = st.columns(3)
             with col_a:
                 st.metric("MSE", f"{mse:.6f}", help="Mean Squared Error (lower is better)")
             with col_b:
-                st.metric("PSNR", f"{psnr:.2f} dB", help="Peak Signal-to-Noise Ratio (higher is better)")
+                psnr_str = "∞ dB (identical)" if psnr == float('inf') else f"{psnr:.2f} dB"
+                st.metric("PSNR", psnr_str, help="Peak Signal-to-Noise Ratio (higher is better)")
             with col_c:
                 utilization = (st.session_state.embed_metadata['container_size'] * 8 / 
                               (st.session_state.cover_metadata['width'] * 
@@ -364,7 +369,7 @@ def show():
                 st.metric("Capacity Used", f"{utilization:.2f}%", help="Percentage of available capacity used")
             
             # Quality interpretation
-            if psnr >= 40:
+            if psnr == float('inf') or psnr >= 50:
                 quality_text = "🟢 **Excellent** - Changes imperceptible"
             elif psnr >= 30:
                 quality_text = "🟡 **Good** - Acceptable quality"
