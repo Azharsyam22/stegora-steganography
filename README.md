@@ -52,7 +52,7 @@ Melakukan analisis mendalam terhadap gambar untuk mendeteksi kemungkinan stegano
 ### **Instalasi (Windows)**
 ```powershell
 # Clone repository
-git clone https://github.com/Azharsyam22/stegora-steganography.git
+git clone https://github.com/yourusername/stegora-steganography.git
 cd stegora-steganography
 
 # Buat virtual environment
@@ -66,7 +66,7 @@ pip install -r requirements.txt
 ### **Instalasi (Linux/macOS)**
 ```bash
 # Clone repository
-git clone https://github.com/Azharsyam22/stegora-steganography.git
+git clone https://github.com/yourusername/stegora-steganography.git
 cd stegora-steganography
 
 # Buat virtual environment
@@ -225,8 +225,8 @@ stegora-steganography/
 Proyek ini dikembangkan untuk memenuhi **Ujian Tengah Semester (UTS)** mata kuliah **Keamanan Informasi** di **Universitas Siliwangi** tahun 2026.
 
 **Topik**: Steganografi LSB dengan Enkripsi AES-GCM  
-**Dosen**: [Ir. Alam Rahmatulloh, S.T., M.T., MCE., IPM.]  
-**Semester**: [Semester5/Tahun2026]
+**Dosen**: [Nama Dosen]  
+**Semester**: [Semester/Tahun]
 
 ---
 
@@ -260,6 +260,14 @@ E2E Pipeline Tests: 17/17 PASSED
 
 © 2026 Stegora Team - Universitas Siliwangi  
 Academic Project - All Rights Reserved
+
+---
+
+## 📞 Kontak
+
+Untuk pertanyaan atau feedback, silakan hubungi:
+- **Email**: [your-email@example.com]
+- **GitHub**: [github.com/yourusername]
 
 ---
 
