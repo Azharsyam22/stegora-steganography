@@ -3,6 +3,7 @@ Tests for integration pipeline
 """
 import pytest
 from PIL import Image
+import numpy as np
 import io
 
 from backend.pipeline import (
@@ -226,9 +227,8 @@ def test_embed_different_stego_keys_produce_different_positions(sample_cover_ima
     )
     
     # Images should be different (different positions modified)
-    # NOTE: With LSB stub, images are identical. Once T10 implemented, they'll differ
-    # For now, just verify both succeed
     assert stego1.size == stego2.size
+    assert not np.array_equal(np.array(stego1), np.array(stego2))
 
 
 def test_embed_rgba_image_preserves_mode(sample_rgba_image):
@@ -258,13 +258,14 @@ def test_embed_metrics_calculation(sample_cover_image):
         stego_key="stegokey123"
     )
     
-    # Metrics should be present (even if stub LSB doesn't modify pixels)
+    # Metrics should be present and reflect real LSB modifications
     assert 'mse' in metadata
     assert 'psnr' in metadata
-    
-    # With stub LSB (no actual modification), MSE should be 0
-    # Once T10 implemented, MSE should be > 0
-    # For now, just check metrics exist
+    assert metadata['mse'] is not None
+    assert metadata['mse'] > 0
+    assert metadata['psnr'] is not None
+    assert metadata['psnr'] < float('inf')
+    assert metadata['psnr'] > 40.0
 
 
 if __name__ == '__main__':

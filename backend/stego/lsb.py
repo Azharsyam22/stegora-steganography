@@ -2,8 +2,8 @@
 1-bit RGB LSB Steganography
 Embed and extract data using least significant bit of RGB channels
 
-TODO: This is a STUB for T10-T11 (Naufal)
-Implementation needed for actual LSB embedding and extraction
+Author: Naufal (247006111158)
+Task: T10 - 1-bit RGB LSB Embedding
 """
 from typing import List, Tuple
 from PIL import Image
@@ -21,80 +21,82 @@ def embed_lsb(
     positions: List[Tuple[int, int, int]]
 ) -> Image.Image:
     """
-    Embed container bytes into cover image using 1-bit RGB LSB
+    Embed container bytes into cover image using 1-bit RGB LSB.
     
     Args:
         cover_image: PIL Image (RGB or RGBA)
-        container_bytes: Complete STGR container to embed
-        positions: List of (x, y, channel) positions from PRNG
+        container_bytes: Complete STGR container bytes to embed
+        positions: List of (x, y, channel) positions from keyed PRNG
         
     Returns:
         Stego image (PIL Image) with embedded data
         
     Raises:
-        LSBError: If embedding fails
-        
-    TODO (T10 - Naufal): Implement actual LSB embedding
-    - Convert image to numpy array for efficiency
-    - Convert container bytes to bit array
-    - For each bit, modify LSB at corresponding position
-    - Preserve all other bits (use bitwise operations)
-    - Preserve alpha channel completely
-    - Return modified image
-    
-    Algorithm:
-        for each bit in container:
-            (x, y, channel) = positions[bit_index]
-            pixel = image[y, x]
-            old_value = pixel[channel]
-            new_value = (old_value & 0xFE) | bit  # Clear LSB, set to bit
-            pixel[channel] = new_value
+        LSBError: If image mode is unsupported, positions are insufficient,
+                  coordinates are out of bounds, or channel is invalid.
     """
-    # Validate inputs
-    if cover_image.mode not in ('RGB', 'RGBA'):
-        raise LSBError(f"Unsupported image mode: {cover_image.mode}")
+    if not isinstance(cover_image, Image.Image):
+        raise LSBError("cover_image must be a PIL Image instance")
     
-    # Convert container to bits
+    if cover_image.mode not in ('RGB', 'RGBA'):
+        raise LSBError(
+            f"Unsupported image mode '{cover_image.mode}'. "
+            "Only 'RGB' and 'RGBA' modes are supported for 1-bit RGB LSB."
+        )
+    
+    if not isinstance(container_bytes, (bytes, bytearray)):
+        raise LSBError("container_bytes must be bytes or bytearray")
+        
+    if len(container_bytes) == 0:
+        raise LSBError("container_bytes cannot be empty")
+        
     num_bits = len(container_bytes) * 8
     
     if len(positions) < num_bits:
         raise LSBError(
-            f"Not enough positions: need {num_bits}, have {len(positions)}"
+            f"Not enough positions: need {num_bits} bit positions, "
+            f"but only {len(positions)} provided"
         )
     
-    # STUB: Create a copy of the image without modification
-    # TODO (T10): Implement actual LSB embedding here
-    stego_image = cover_image.copy()
+    width, height = cover_image.size
+    pos_subset = positions[:num_bits]
     
-    # Convert to numpy array for manipulation
-    pixels = np.array(stego_image)
+    # Extract coordinate arrays
+    xs = np.fromiter((p[0] for p in pos_subset), dtype=np.intp, count=num_bits)
+    ys = np.fromiter((p[1] for p in pos_subset), dtype=np.intp, count=num_bits)
+    cs = np.fromiter((p[2] for p in pos_subset), dtype=np.intp, count=num_bits)
     
-    # Convert bytes to bit list
-    bits = []
-    for byte in container_bytes:
-        for i in range(8):
-            bits.append((byte >> (7 - i)) & 1)
+    # Validate coordinate boundaries and channel index
+    if np.any(xs < 0) or np.any(xs >= width) or np.any(ys < 0) or np.any(ys >= height):
+        raise LSBError(f"Position coordinates outside image dimensions ({width}x{height})")
     
-    # Embed each bit (STUB - not actually modifying LSBs yet)
-    # TODO (T10): Uncomment and implement this loop
-    """
-    for bit_index, bit in enumerate(bits):
-        x, y, channel = positions[bit_index]
+    # Channel must be 0 (Red), 1 (Green), or 2 (Blue). Channel 3 (Alpha) is strictly forbidden.
+    if np.any(cs < 0) or np.any(cs > 2):
+        raise LSBError("Invalid channel index: only RGB channels (0, 1, 2) allowed; Alpha (3) is forbidden")
+    
+    # Convert container bytes to bit array (MSB first)
+    bits = np.unpackbits(np.frombuffer(container_bytes, dtype=np.uint8))
+    
+    # Convert image to numpy array (copy to avoid mutating original image)
+    pixels = np.array(cover_image, copy=True)
+    
+    # Save original alpha if RGBA to verify strict preservation
+    if cover_image.mode == 'RGBA':
+        original_alpha = pixels[:, :, 3].copy()
+    
+    # Embed 1-bit LSB: clear bit 0 and bitwise-OR with payload bit
+    pixels[ys, xs, cs] = (pixels[ys, xs, cs] & 0xFE) | bits
+    
+    # Strict assertion: Alpha channel must remain 100% unchanged
+    if cover_image.mode == 'RGBA':
+        if not np.array_equal(original_alpha, pixels[:, :, 3]):
+            raise LSBError("Alpha channel integrity check failed: alpha was modified during embedding")
+    
+    # Convert numpy array back to PIL Image
+    stego_image = Image.fromarray(pixels)
+    if cover_image.format:
+        stego_image.format = cover_image.format
         
-        # Get current channel value
-        old_value = pixels[y, x, channel]
-        
-        # Clear LSB and set to new bit
-        new_value = (old_value & 0xFE) | bit
-        
-        # Update pixel
-        pixels[y, x, channel] = new_value
-    """
-    
-    # Convert back to PIL Image
-    # TODO (T10): Use modified pixels array
-    # stego_image = Image.fromarray(pixels, mode=cover_image.mode)
-    
     return stego_image
 
 
