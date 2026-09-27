@@ -18,8 +18,14 @@ from backend.stego.capacity import (
 from backend.stego.container import (
     create_container,
     parse_container,
+    parse_header,
+    parse_metadata_lengths,
     calculate_container_size,
-    ContainerError
+    ContainerError,
+    MAGIC,
+    VERSION,
+    HEADER_SIZE,
+    META_LENGTHS_SIZE,
 )
 
 from backend.stego.positions import (
@@ -53,8 +59,14 @@ __all__ = [
     # Container
     'create_container',
     'parse_container',
+    'parse_header',
+    'parse_metadata_lengths',
     'calculate_container_size',
     'ContainerError',
+    'MAGIC',
+    'VERSION',
+    'HEADER_SIZE',
+    'META_LENGTHS_SIZE',
     
     # Positions
     'generate_positions',

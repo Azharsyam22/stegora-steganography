@@ -13,7 +13,14 @@ from backend.image.io import validate_and_load_cover_image, ImageValidationError
 from backend.stego.capacity import format_bytes
 from backend.stego.positions import generate_positions
 from backend.stego.lsb import extract_lsb
-from backend.stego.container import parse_container, ContainerError
+from backend.stego.container import (
+    parse_container, 
+    parse_header, 
+    parse_metadata_lengths, 
+    ContainerError,
+    HEADER_SIZE,
+    META_LENGTHS_SIZE
+)
 from backend.crypto.pbkdf2 import derive_key
 from backend.crypto.aes_gcm import decrypt
 
@@ -132,48 +139,42 @@ def show():
             with st.spinner("Extracting message..."):
                 # 1. Generate positions (must match embedding)
                 # First, we need to read the header to know how many bytes to extract
-                # Read fixed header size first (16 bytes)
+                # Read fixed header size first (12 bytes)
                 header_positions = generate_positions(
                     width=st.session_state.stego_metadata['width'],
                     height=st.session_state.stego_metadata['height'],
                     stego_key=stego_key,
-                    num_bits=16 * 8  # 16 bytes for fixed header
+                    num_bits=HEADER_SIZE * 8  # 12 bytes for fixed header
                 )
                 
                 header_bytes = extract_lsb(
                     stego_image=st.session_state.stego_image,
                     positions=header_positions,
-                    num_bytes=16
+                    num_bytes=HEADER_SIZE
                 )
                 
                 # Parse header to get payload length
-                magic, version, flags, payload_type, reserved, payload_len = struct.unpack(
-                    '>4s B B B B I',
-                    header_bytes
-                )
-                
-                # Validate magic
-                if magic != b'STGR':
-                    raise ContainerError(f"Invalid magic bytes: {magic}. This may not be a Stegora image or wrong stego-key was used.")
+                header_data = parse_header(header_bytes)
+                payload_len = header_data['payload_len']
                 
                 # Read metadata lengths (next 5 bytes)
                 meta_positions = generate_positions(
                     width=st.session_state.stego_metadata['width'],
                     height=st.session_state.stego_metadata['height'],
                     stego_key=stego_key,
-                    num_bits=(16 + 5) * 8
+                    num_bits=(HEADER_SIZE + META_LENGTHS_SIZE) * 8
                 )
                 
                 meta_bytes = extract_lsb(
                     stego_image=st.session_state.stego_image,
-                    positions=meta_positions[16*8:],  # Skip header
-                    num_bytes=5
+                    positions=meta_positions[HEADER_SIZE * 8:],  # Skip header
+                    num_bytes=META_LENGTHS_SIZE
                 )
                 
-                salt_len, iv_len, filename_len, mime_len = struct.unpack('>B B H B', meta_bytes)
+                salt_len, iv_len, filename_len, mime_len = parse_metadata_lengths(meta_bytes)
                 
                 # Calculate total container size
-                total_size = 16 + 5 + salt_len + iv_len + filename_len + mime_len + payload_len
+                total_size = HEADER_SIZE + META_LENGTHS_SIZE + salt_len + iv_len + filename_len + mime_len + payload_len
                 
                 # 2. Generate all positions needed
                 all_positions = generate_positions(

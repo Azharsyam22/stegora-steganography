@@ -11,8 +11,12 @@ from backend.crypto.aes_gcm import encrypt, decrypt
 from backend.stego.container import (
     create_container, 
     parse_container, 
+    parse_header,
+    parse_metadata_lengths,
     ContainerError,
-    calculate_container_size
+    calculate_container_size,
+    HEADER_SIZE,
+    META_LENGTHS_SIZE
 )
 from backend.stego.positions import generate_positions, PositionGeneratorError
 from backend.stego.lsb import embed_lsb, extract_lsb, LSBError
@@ -197,39 +201,37 @@ def extract_pipeline(
         
         # 1. Read header to determine container size
         try:
-            # Read fixed header (16 bytes)
-            header_positions = generate_positions(width, height, stego_key, 16 * 8)
-            header_bytes = extract_lsb(stego_image, header_positions, 16)
+            # Read fixed header (12 bytes)
+            header_positions = generate_positions(width, height, stego_key, HEADER_SIZE * 8)
+            header_bytes = extract_lsb(stego_image, header_positions, HEADER_SIZE)
             
-            # Parse magic and payload length
-            import struct
-            magic = header_bytes[0:4]
-            payload_len = struct.unpack('>I', header_bytes[12:16])[0]
-            
-            if magic != b'STGR':
-                raise ExtractError(
-                    f"Invalid magic bytes: {magic}. "
-                    "This may not be a Stegora image or wrong stego-key was used."
-                )
+            # Parse and validate header
+            header_data = parse_header(header_bytes)
+            payload_len = header_data['payload_len']
             
         except PositionGeneratorError as e:
             raise ExtractError(f"Position generation failed: {str(e)}")
         except LSBError as e:
             raise ExtractError(f"LSB extraction failed: {str(e)}")
+        except ContainerError as e:
+            raise ExtractError(f"Header validation failed: {str(e)}")
         
         # 2. Read metadata lengths (next 5 bytes)
         try:
-            meta_positions = generate_positions(width, height, stego_key, 21 * 8)
-            meta_bytes = extract_lsb(stego_image, meta_positions[16*8:], 5)
+            meta_positions = generate_positions(width, height, stego_key, (HEADER_SIZE + META_LENGTHS_SIZE) * 8)
+            meta_bytes = extract_lsb(stego_image, meta_positions[HEADER_SIZE * 8:], META_LENGTHS_SIZE)
             
-            import struct
-            salt_len, iv_len, filename_len, mime_len = struct.unpack('>B B H B', meta_bytes)
+            salt_len, iv_len, filename_len, mime_len = parse_metadata_lengths(meta_bytes)
             
+        except PositionGeneratorError as e:
+            raise ExtractError(f"Position generation failed: {str(e)}")
+        except LSBError as e:
+            raise ExtractError(f"LSB extraction failed: {str(e)}")
         except Exception as e:
             raise ExtractError(f"Failed to read metadata lengths: {str(e)}")
         
         # 3. Calculate total container size
-        total_size = 16 + 5 + salt_len + iv_len + filename_len + mime_len + payload_len
+        total_size = HEADER_SIZE + META_LENGTHS_SIZE + salt_len + iv_len + filename_len + mime_len + payload_len
         
         # 4. Generate all positions and extract container
         try:
