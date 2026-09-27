@@ -1,7 +1,8 @@
 """
 Stegora Analysis Module
 
-Provides histogram analysis, LSB plane visualization, and robustness testing.
+Provides histogram analysis, LSB plane visualization, robustness testing,
+and testing matrix with XLSX export.
 """
 
 from .histogram import (
@@ -32,6 +33,19 @@ from .robustness import (
     test_stego_resilience
 )
 
+from .testing_matrix import (
+    TestCase,
+    TestingMatrix,
+    create_test_payloads,
+    create_test_images
+)
+
+from .xlsx_export import (
+    XLSXExporter,
+    export_matrix_to_xlsx,
+    OPENPYXL_AVAILABLE
+)
+
 __all__ = [
     # Histogram analysis
     'calculate_histogram',
@@ -56,5 +70,16 @@ __all__ = [
     'simulate_bit_flip_attack',
     'simulate_truncation_attack',
     'create_malformed_header',
-    'test_stego_resilience'
+    'test_stego_resilience',
+    
+    # Testing matrix
+    'TestCase',
+    'TestingMatrix',
+    'create_test_payloads',
+    'create_test_images',
+    
+    # XLSX export
+    'XLSXExporter',
+    'export_matrix_to_xlsx',
+    'OPENPYXL_AVAILABLE'
 ]
