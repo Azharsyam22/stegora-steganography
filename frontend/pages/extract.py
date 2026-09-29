@@ -10,8 +10,7 @@ from frontend.ui.components import (
     page_title, section_header, muted_text, footer
 )
 from frontend.ui.state import (
-    init_session_state, save_extract_result, save_extract_error,
-    is_demo_mode, get_demo_credentials, get_stored_credentials
+    init_session_state, save_extract_result, save_extract_error
 )
 from backend.image.io import validate_and_load_cover_image, ImageValidationError
 from backend.stego.capacity import format_bytes
@@ -32,17 +31,17 @@ from backend.crypto.aes_gcm import decrypt
 def show():
     """Extract page UI with complete workflow"""
     page_title(
-        "Extract Message",
-        "Extract hidden message from a stego image"
+        "Ekstrak Pesan",
+        "Ambil kembali pesan tersembunyi dari citra stego"
     )
     
     # Step 1: Stego image
-    section_header("1. Upload Stego Image")
+    section_header("1. Unggah Citra Stego")
     stego_file = st.file_uploader(
-        "Choose image (PNG, BMP, JPG/JPEG)",
-        type=["png", "bmp", "jpg", "jpeg"],
+        "Pilih citra (PNG, BMP)",
+        type=["png", "bmp"],
         key="extract_stego",
-        help="Select the image containing the hidden message (PNG/BMP required). JPG/JPEG will be checked by format validation."
+        help="Pilih citra yang berisi pesan tersembunyi. Hanya PNG/BMP yang didukung."
     )
     
     stego_valid = False
@@ -62,96 +61,78 @@ def show():
             col1, col2 = st.columns([1, 2])
             
             with col1:
-                st.image(image, caption="Stego Image", use_container_width=True)
+                st.image(image, caption="Citra Stego", use_container_width=True)
             
             with col2:
-                st.success(f"✓ Loaded: **{stego_file.name}**")
+                st.success(f"✓ Berhasil dimuat: **{stego_file.name}**")
                 
                 # Image info
-                st.markdown("**Image Information**")
+                st.markdown("**Informasi Citra**")
                 col_a, col_b = st.columns(2)
                 with col_a:
                     st.metric("Format", metadata['format'])
                     st.metric("Mode", metadata['mode'])
                 with col_b:
-                    st.metric("Width", f"{metadata['width']} px")
-                    st.metric("Height", f"{metadata['height']} px")
+                    st.metric("Lebar", f"{metadata['width']} px")
+                    st.metric("Tinggi", f"{metadata['height']} px")
                 
-                muted_text("Image ready for extraction")
+                muted_text("Citra siap diekstrak")
                 
         except ImageValidationError as e:
-            st.error(f"**Validation Error:** {str(e)}")
+            st.error(f"**Kesalahan Validasi:** {str(e)}")
             stego_valid = False
         except Exception as e:
-            st.error(f"**Unexpected Error:** {str(e)}")
+            st.error(f"**Kesalahan Tidak Terduga:** {str(e)}")
             stego_valid = False
     
     # Step 2: Credentials
-    section_header("2. Security Credentials")
+    section_header("2. Kredensial Keamanan")
     
-    st.markdown("Enter the same credentials used during embedding:")
-    
-    # Demo mode hint
-    if is_demo_mode():
-        demo_pass, demo_key = get_demo_credentials()
-        st.info(f"**Demo Mode Active** - Correct credentials: `{demo_pass}` / `{demo_key}`")
-    
-    # Get stored credentials (from last embed)
-    stored_pass, stored_key = get_stored_credentials()
+    st.markdown("Masukkan kredensial yang sama dengan yang digunakan saat penyisipan:")
     
     col1, col2 = st.columns(2)
     with col1:
-        default_password = demo_pass if is_demo_mode() else stored_pass
         password = st.text_input(
-            "Password",
+            "Kata sandi",
             type="password",
             key="extract_password",
-            value=default_password,
-            help="Same password used for encryption"
+            value="",
+            help="Gunakan kata sandi yang sama dengan saat enkripsi."
         )
     with col2:
-        default_stego_key = demo_key if is_demo_mode() else stored_key
         stego_key = st.text_input(
-            "Stego-key",
+            "Kunci stego",
             type="password",
             key="extract_stego_key",
-            value=default_stego_key,
-            help="Same stego-key used for positioning"
+            value="",
+            help="Gunakan kunci stego yang sama untuk menentukan posisi."
         )
     
-    # Wrong-key demo button
-    st.markdown("---")
-    col_a, col_b, col_c = st.columns([1, 1, 1])
-    with col_b:
-        if st.button("Try Wrong Key (Demo)", use_container_width=True, help="Demonstrate wrong stego-key failure"):
-            st.session_state.demo_wrong_key = True
-            st.rerun()
-    
     # Step 3: Extract
-    section_header("3. Extract Message")
+    section_header("3. Ekstrak Pesan")
     
     # Validation
     can_extract = True
     warnings = []
     
     if not stego_valid:
-        warnings.append("Upload a valid stego image")
+        warnings.append("Unggah citra stego yang valid")
         can_extract = False
     if not password:
-        warnings.append("Enter password")
+        warnings.append("Masukkan kata sandi")
         can_extract = False
     if not stego_key:
-        warnings.append("Enter stego-key")
+        warnings.append("Masukkan kunci stego")
         can_extract = False
     
     if warnings:
-        st.warning(f"Required: {', '.join(warnings)}")
+        st.warning(f"Perlu dilengkapi: {', '.join(warnings)}")
     
     col1, col2, col3 = st.columns([2, 1, 2])
     
     with col2:
         extract_btn = st.button(
-            "Extract Message",
+            "Ekstrak Pesan",
             type="primary",
             use_container_width=True,
             disabled=not can_extract
@@ -160,7 +141,7 @@ def show():
     # Process extraction
     if extract_btn and can_extract:
         try:
-            with st.spinner("Extracting message..."):
+            with st.spinner("Pesan sedang diekstrak..."):
                 # 1. Generate positions (must match embedding)
                 # First, we need to read the header to know how many bytes to extract
                 # Read fixed header size first (12 bytes)
@@ -242,35 +223,35 @@ def show():
                     'integrity': 'OK'
                 }
                 
-                st.success("✓ Message extracted and decrypted successfully!")
+                st.success("✓ Pesan berhasil diekstrak dan didekripsi!")
                 
                 # Show extraction statistics
-                with st.expander("Extraction Statistics", expanded=False):
+                with st.expander("Statistik Ekstraksi", expanded=False):
                     col_a, col_b = st.columns(2)
                     with col_a:
-                        st.metric("Container Size", format_bytes(len(container_bytes)))
-                        st.metric("Encrypted Size", format_bytes(len(container_data['payload'])))
+                        st.metric("Ukuran Kontainer", format_bytes(len(container_bytes)))
+                        st.metric("Ukuran Terenkripsi", format_bytes(len(container_data['payload'])))
                     with col_b:
-                        st.metric("Decrypted Size", format_bytes(len(plaintext)))
-                        st.metric("Bits Extracted", f"{len(container_bytes) * 8:,}")
+                        st.metric("Ukuran Terdekripsi", format_bytes(len(plaintext)))
+                        st.metric("Bit Diekstrak", f"{len(container_bytes) * 8:,}")
                 
         except ContainerError as e:
-            st.error(f"**Container Error:** {str(e)}")
-            st.caption("This usually means wrong stego-key or corrupted image.")
+            st.error(f"**Kesalahan Kontainer:** {str(e)}")
+            st.caption("Biasanya kunci stego salah atau citra rusak.")
             st.session_state.extracted_data = None
             
         except ValueError as e:
-            st.error(f"**Decryption Error:** {str(e)}")
-            st.caption("This usually means wrong password or corrupted data.")
+            st.error(f"**Kesalahan Dekripsi:** {str(e)}")
+            st.caption("Biasanya kata sandi salah atau data rusak.")
             st.session_state.extracted_data = None
             
         except Exception as e:
-            st.error(f"**Extraction Failed:** {str(e)}")
+            st.error(f"**Ekstraksi Gagal:** {str(e)}")
             st.session_state.extracted_data = None
     
     # Step 4: Result
     if hasattr(st.session_state, 'extracted_data') and st.session_state.extracted_data is not None:
-        section_header("4. Extracted Content")
+        section_header("4. Konten Hasil Ekstraksi")
         
         extracted = st.session_state.extracted_data
         
@@ -282,9 +263,9 @@ def show():
             try:
                 text_content = extracted['plaintext'].decode('utf-8')
                 
-                st.markdown("**Recovered Text Message:**")
+                st.markdown("**Pesan Teks yang Dipulihkan:**")
                 st.text_area(
-                    "Message content",
+                    "Isi pesan",
                     value=text_content,
                     height=200,
                     label_visibility="collapsed"
@@ -293,76 +274,76 @@ def show():
                 # Metadata
                 col1, col2 = st.columns(2)
                 with col1:
-                    st.metric("Filename", extracted['filename'])
-                    st.metric("Type", extracted['mime_type'])
+                    st.metric("Nama berkas", extracted['filename'])
+                    st.metric("Jenis", extracted['mime_type'])
                 with col2:
-                    st.metric("Size", format_bytes(extracted['payload_size']))
-                    st.metric("Characters", len(text_content))
+                    st.metric("Ukuran", format_bytes(extracted['payload_size']))
+                    st.metric("Jumlah karakter", len(text_content))
                 
             except UnicodeDecodeError:
-                st.warning("Could not decode as text. Treating as binary file.")
+                st.warning("Teks tidak dapat dibaca. Konten akan diperlakukan sebagai berkas biner.")
                 is_text = False
         
         if not is_text:
             # Display file info and download
-            st.markdown("**Recovered File:**")
+            st.markdown("**Berkas yang Dipulihkan:**")
             
             col1, col2 = st.columns(2)
             with col1:
-                st.metric("Filename", extracted['filename'])
-                st.metric("MIME Type", extracted['mime_type'])
+                st.metric("Nama berkas", extracted['filename'])
+                st.metric("Jenis MIME", extracted['mime_type'])
             with col2:
-                st.metric("File Size", format_bytes(extracted['payload_size']))
-                st.metric("Status", "✓ Ready")
+                st.metric("Ukuran Berkas", format_bytes(extracted['payload_size']))
+                st.metric("Status", "✓ Siap")
             
             # Download button
             st.download_button(
-                label="Download Recovered File",
+                label="Unduh Berkas Hasil Ekstraksi",
                 data=extracted['plaintext'],
                 file_name=extracted['filename'] or "recovered_file.bin",
                 mime=extracted['mime_type'],
-                help="Download the extracted file"
+                help="Unduh berkas yang telah diekstrak."
             )
         
         # Verification status
-        st.markdown("**Verification Status**")
+        st.markdown("**Status Verifikasi**")
         col1, col2, col3 = st.columns(3)
         with col1:
             status = "✓ Valid" if extracted['magic_valid'] else "✗ Invalid"
-            st.metric("Magic Bytes", status, help="STGR header validation")
+            st.metric("Byte Penanda", status, help="Validasi header STGR.")
         with col2:
             status = "✓ Valid" if extracted['auth_valid'] else "✗ Invalid"
-            st.metric("Auth Tag", status, help="AES-GCM authentication passed")
+            st.metric("Tag Autentikasi", status, help="Autentikasi AES-GCM berhasil.")
         with col3:
-            st.metric("Integrity", extracted['integrity'], help="Overall data integrity")
+            st.metric("Integritas", extracted['integrity'], help="Integritas data secara keseluruhan.")
         
-        st.success("Extraction completed successfully! All verifications passed.")
+        st.success("Ekstraksi berhasil! Semua verifikasi lolos.")
     
     # Help section
-    with st.expander("Extraction Tips", expanded=False):
+    with st.expander("Tips Ekstraksi", expanded=False):
         st.markdown("""
-        **For successful extraction:**
+        **Agar ekstraksi berhasil:**
         
-        1. **Use the correct stego image**
-           - Must be the exact output from embedding
-           - Do not re-save or modify the image
-           - JPEG conversion will destroy hidden data
+          1. **Gunakan citra stego yang benar**
+              - Gunakan berkas hasil penyisipan yang asli
+              - Jangan simpan ulang atau mengubah citra
+              - Konversi JPEG akan merusak data tersembunyi
         
-        2. **Use the exact same credentials**
-           - Password must match exactly (case-sensitive)
-           - Stego-key must match exactly
-           - Wrong credentials = wrong/garbled output
+          2. **Gunakan kredensial yang sama persis**
+              - Kata sandi peka terhadap huruf besar dan kecil
+              - Kunci stego harus sama persis
+              - Kredensial salah akan menghasilkan data keliru atau rusak
         
-        3. **Avoid image modification**
-           - Do not crop, resize, or rotate
-           - Do not apply filters or adjustments
-           - Do not convert format (PNG ↔ BMP is safe if lossless)
+          3. **Hindari mengubah citra**
+              - Jangan memotong, mengubah ukuran, atau memutar citra
+              - Jangan menerapkan filter atau penyesuaian
+              - Jangan mengubah format (PNG ↔ BMP aman jika lossless)
         
-        4. **Expected outcomes**
-           - [✓] Correct credentials → Original message recovered
-           - [X] Wrong password → Authentication failure
-           - [X] Wrong stego-key → Garbled data or parse error
-           - [X] Modified image → Corrupted/partial data
+          4. **Hasil yang diharapkan**
+              - [✓] Kredensial benar → Pesan asli dipulihkan
+              - [X] Kata sandi salah → Autentikasi gagal
+              - [X] Kunci stego salah → Data rusak atau kesalahan pembacaan
+              - [X] Citra diubah → Data rusak atau tidak lengkap
         """)
     
     footer()

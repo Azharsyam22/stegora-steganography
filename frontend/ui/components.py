@@ -103,23 +103,23 @@ def credentials_input(key_prefix: str = ""):
     Returns:
         tuple: (password, stego_key)
     """
-    section_header("Security Credentials")
+    section_header("Kredensial Keamanan")
     
     col1, col2 = st.columns(2)
     
     with col1:
         password = st.text_input(
-            "Password",
+            "Kata sandi",
             type="password",
-            help="Used for AES-256-GCM encryption/decryption",
+            help="Digunakan untuk enkripsi/dekripsi AES-256-GCM.",
             key=f"{key_prefix}_password"
         )
     
     with col2:
         stego_key = st.text_input(
-            "Stego-key",
+            "Kunci stego",
             type="password",
-            help="Determines pixel positions for embedding",
+            help="Menentukan posisi piksel untuk penyisipan.",
             key=f"{key_prefix}_stego_key"
         )
     
@@ -129,7 +129,7 @@ def credentials_input(key_prefix: str = ""):
 def footer():
     """Display consistent footer"""
     st.markdown("---")
-    st.caption("STEGORA · Professional Steganography Suite · LSB with AES-256-GCM")
+    st.caption("STEGORA · Perangkat Steganografi · LSB dengan AES-256-GCM")
 
 
 def show_progress(message: str = "Processing..."):

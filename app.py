@@ -6,7 +6,7 @@ import streamlit as st
 
 # Configure page
 st.set_page_config(
-    page_title="Stegora | Professional Steganography",
+    page_title="Stegora | Aplikasi Steganografi",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -20,10 +20,10 @@ from frontend.pages import embed, extract, analyze, about
 
 # Define pages
 pages = [
-    st.Page(embed.show, title="Embed", url_path="embed"),
-    st.Page(extract.show, title="Extract", url_path="extract"),
-    st.Page(analyze.show, title="Analyze", url_path="analyze"),
-    st.Page(about.show, title="About", url_path="about"),
+    st.Page(embed.show, title="Sisipkan", url_path="embed"),
+    st.Page(extract.show, title="Ekstrak", url_path="extract"),
+    st.Page(analyze.show, title="Analisis", url_path="analyze"),
+    st.Page(about.show, title="Tentang", url_path="about"),
 ]
 
 # Navigation
@@ -34,46 +34,46 @@ pg.run()
 
 # Then add sidebar content (after pg.run())
 st.sidebar.markdown("### STEGORA")
-st.sidebar.caption("Professional Steganography Suite")
+st.sidebar.caption("Perangkat Steganografi")
 
 # Navigation Guide
-st.sidebar.caption("**NAVIGATION**")
+st.sidebar.caption("**NAVIGASI**")
 st.sidebar.markdown("""
-**Embed** — Hide messages in images  
-**Extract** — Recover hidden messages  
-**Analyze** — Steganalysis tools  
-**About** — System information
+**Sisipkan** — Sembunyikan pesan di dalam citra  
+**Ekstrak** — Pulihkan pesan tersembunyi  
+**Analisis** — Alat steganalisis  
+**Tentang** — Informasi sistem
 """)
 
 st.sidebar.markdown("---")
 
 # Team info
-with st.sidebar.expander("TEAM", expanded=False):
+with st.sidebar.expander("TIM", expanded=False):
     st.markdown("""
     **Azhar** · 247006111168  
-    UI/UX & Integration
+    UI/UX & Integrasi
     
     **Naufal** · 247006111158  
-    Steganography Core
+    Inti Steganografi
     
     **Hana** · 247006111170  
-    Cryptography & Analysis
+    Kriptografi & Analisis
     """)
 
 # Technical Info
-with st.sidebar.expander("TECHNOLOGY", expanded=False):
+with st.sidebar.expander("TEKNOLOGI", expanded=False):
     st.markdown("""
-    **Security Stack**
-    - AES-256-GCM Encryption
-    - PBKDF2 Key Derivation
-    - LSB Steganography
+    **Teknologi Keamanan**
+    - Enkripsi AES-256-GCM
+    - Derivasi kunci PBKDF2
+    - Steganografi LSB
     
     **Platform**
     - Python 3.11
-    - Streamlit Framework
-    - Pillow (Image Processing)
+    - Kerangka kerja Streamlit
+    - Pillow (Pemrosesan Citra)
     
-    **Institution**  
+    **Institusi**  
     Universitas Siliwangi  
     Keamanan Informasi
     """)

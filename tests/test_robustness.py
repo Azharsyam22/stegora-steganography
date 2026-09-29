@@ -10,15 +10,18 @@ Course: Information Security - Universitas Siliwangi
 import pytest
 import numpy as np
 from PIL import Image
+import io
+
+from backend.pipeline import extract_pipeline, embed_pipeline, ExtractError
 
 from stegora.analysis.robustness import (
-    test_jpeg_compression,
-    test_jpeg_multiple_qualities,
+    test_jpeg_compression as jpeg_compression,
+    test_jpeg_multiple_qualities as jpeg_multiple_qualities,
     calculate_bit_error_rate,
     simulate_bit_flip_attack,
     simulate_truncation_attack,
     create_malformed_header,
-    test_stego_resilience
+    test_stego_resilience as stego_resilience
 )
 
 
@@ -29,7 +32,7 @@ class TestJPEGCompression:
         """Test basic JPEG compression."""
         img = np.random.randint(0, 256, (100, 100, 3), dtype=np.uint8)
         
-        compressed, metrics = test_jpeg_compression(img, quality=95)
+        compressed, metrics = jpeg_compression(img, quality=95)
         
         assert compressed.shape == img.shape
         assert compressed.dtype == np.uint8
@@ -41,7 +44,7 @@ class TestJPEGCompression:
         """Test high quality JPEG (minimal loss)."""
         img = np.random.randint(0, 256, (50, 50, 3), dtype=np.uint8)
         
-        compressed, metrics = test_jpeg_compression(img, quality=95)
+        compressed, metrics = jpeg_compression(img, quality=95)
         
         # JPEG compression always causes some loss (even Q95)
         assert metrics['psnr'] > 0  # Some PSNR value
@@ -54,7 +57,7 @@ class TestJPEGCompression:
         """Test low quality JPEG (significant loss)."""
         img = np.random.randint(0, 256, (50, 50, 3), dtype=np.uint8)
         
-        compressed, metrics = test_jpeg_compression(img, quality=50)
+        compressed, metrics = jpeg_compression(img, quality=50)
         
         # Low quality has lower PSNR
         assert metrics['psnr'] > 0  # Still some signal
@@ -66,8 +69,8 @@ class TestJPEGCompression:
         """Test that higher quality gives better metrics."""
         img = np.random.randint(0, 256, (50, 50, 3), dtype=np.uint8)
         
-        _, metrics_95 = test_jpeg_compression(img, quality=95)
-        _, metrics_50 = test_jpeg_compression(img, quality=50)
+        _, metrics_95 = jpeg_compression(img, quality=95)
+        _, metrics_50 = jpeg_compression(img, quality=50)
         
         # Higher quality should have lower MSE and higher PSNR
         assert metrics_95['mse'] < metrics_50['mse']
@@ -77,7 +80,7 @@ class TestJPEGCompression:
         """Test JPEG with RGBA image (alpha ignored)."""
         img = np.random.randint(0, 256, (50, 50, 4), dtype=np.uint8)
         
-        compressed, metrics = test_jpeg_compression(img, quality=95)
+        compressed, metrics = jpeg_compression(img, quality=95)
         
         # JPEG output is RGB (no alpha)
         assert compressed.shape == (50, 50, 3)
@@ -87,17 +90,17 @@ class TestJPEGCompression:
         img = np.zeros((10, 10, 3), dtype=np.uint8)
         
         with pytest.raises(ValueError, match="Quality must be"):
-            test_jpeg_compression(img, quality=0)
+            jpeg_compression(img, quality=0)
         
         with pytest.raises(ValueError, match="Quality must be"):
-            test_jpeg_compression(img, quality=101)
+            jpeg_compression(img, quality=101)
     
     def test_jpeg_invalid_shape(self):
         """Test error on invalid image shape."""
         img = np.zeros((10, 10), dtype=np.uint8)  # Grayscale
         
         with pytest.raises(ValueError, match="Expected RGB/RGBA"):
-            test_jpeg_compression(img, quality=95)
+            jpeg_compression(img, quality=95)
 
 
 class TestJPEGMultipleQualities:
@@ -107,7 +110,7 @@ class TestJPEGMultipleQualities:
         """Test with default quality levels."""
         img = np.random.randint(0, 256, (50, 50, 3), dtype=np.uint8)
         
-        results = test_jpeg_multiple_qualities(img)
+        results = jpeg_multiple_qualities(img)
         
         # Default: [95, 85, 75, 50]
         assert len(results) == 4
@@ -120,7 +123,7 @@ class TestJPEGMultipleQualities:
         """Test with custom quality levels."""
         img = np.random.randint(0, 256, (50, 50, 3), dtype=np.uint8)
         
-        results = test_jpeg_multiple_qualities(img, qualities=[90, 70, 50])
+        results = jpeg_multiple_qualities(img, qualities=[90, 70, 50])
         
         assert len(results) == 3
         assert 90 in results
@@ -131,7 +134,7 @@ class TestJPEGMultipleQualities:
         """Test that MSE increases as quality decreases."""
         img = np.random.randint(0, 256, (50, 50, 3), dtype=np.uint8)
         
-        results = test_jpeg_multiple_qualities(img, qualities=[95, 75, 50])
+        results = jpeg_multiple_qualities(img, qualities=[95, 75, 50])
         
         # MSE should increase as quality decreases
         assert results[95]['mse'] < results[75]['mse']
@@ -358,7 +361,7 @@ class TestStegoResilience:
         """Test resilience to JPEG compression."""
         img = np.random.randint(0, 256, (50, 50, 3), dtype=np.uint8)
         
-        attacked, metrics = test_stego_resilience(img, attack_type='jpeg', quality=75)
+        attacked, metrics = stego_resilience(img, attack_type='jpeg', quality=75)
         
         assert attacked.shape == img.shape
         assert 'psnr' in metrics
@@ -368,7 +371,7 @@ class TestStegoResilience:
         """Test resilience to Gaussian noise."""
         img = np.random.randint(0, 256, (50, 50, 3), dtype=np.uint8)
         
-        attacked, metrics = test_stego_resilience(img, attack_type='noise', sigma=5.0)
+        attacked, metrics = stego_resilience(img, attack_type='noise', sigma=5.0)
         
         assert attacked.shape == img.shape
         assert 'psnr' in metrics
@@ -379,7 +382,7 @@ class TestStegoResilience:
         """Test resilience to Gaussian blur."""
         img = np.random.randint(0, 256, (50, 50, 3), dtype=np.uint8)
         
-        attacked, metrics = test_stego_resilience(img, attack_type='blur', sigma=1.0)
+        attacked, metrics = stego_resilience(img, attack_type='blur', sigma=1.0)
         
         assert attacked.shape == img.shape
         assert 'psnr' in metrics
@@ -389,7 +392,7 @@ class TestStegoResilience:
         img = np.zeros((10, 10, 3), dtype=np.uint8)
         
         with pytest.raises(ValueError, match="Unknown attack_type"):
-            test_stego_resilience(img, attack_type='invalid')
+            stego_resilience(img, attack_type='invalid')
 
 
 class TestJPEGLSBDestruction:
@@ -401,7 +404,7 @@ class TestJPEGLSBDestruction:
         img = np.full((50, 50, 3), 100, dtype=np.uint8)  # All even (LSB=0)
         
         # Apply JPEG compression
-        compressed, metrics = test_jpeg_compression(img, quality=75)
+        compressed, metrics = jpeg_compression(img, quality=75)
         
         # Uniform images may be well-preserved by JPEG
         # Just verify metrics are calculated
@@ -413,8 +416,36 @@ class TestJPEGLSBDestruction:
         """Test that even high quality JPEG affects LSB."""
         img = np.full((50, 50, 3), 100, dtype=np.uint8)
         
-        compressed, metrics = test_jpeg_compression(img, quality=95)
+        compressed, metrics = jpeg_compression(img, quality=95)
         
         # Even at Q95, uniform images might be well-preserved
         # Just check it's not identical
         assert metrics['mse'] >= 0  # Some difference or identical
+
+
+def test_extraction_fails_after_stego_is_resaved_as_jpeg():
+    cover_array = np.random.default_rng(2026).integers(
+        0, 256, (256, 256, 3), dtype=np.uint8
+    )
+    cover_image = Image.fromarray(cover_array)
+    payload = b"JPEG round-trip fragility check"
+    password = "jpeg_test_password"
+    stego_key = "jpeg_test_stego_key"
+
+    stego_image, _ = embed_pipeline(
+        cover_image,
+        payload,
+        password,
+        stego_key,
+        filename="message.txt",
+        mime_type="text/plain"
+    )
+
+    jpeg_buffer = io.BytesIO()
+    stego_image.save(jpeg_buffer, format='JPEG', quality=90)
+    jpeg_buffer.seek(0)
+    with Image.open(jpeg_buffer) as jpeg_image:
+        resaved_image = jpeg_image.convert('RGB')
+
+    with pytest.raises(ExtractError):
+        extract_pipeline(resaved_image, password, stego_key)

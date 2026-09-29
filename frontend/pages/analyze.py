@@ -3,99 +3,303 @@ Stegora - Analyze Page
 Steganalysis tools and metrics
 """
 import streamlit as st
+import numpy as np
+from PIL import Image
+import io
+
 from frontend.ui.components import (
     page_title, section_header, muted_text, footer
 )
+from backend.image.io import validate_and_load_cover_image, ImageValidationError
+from backend.image.metrics import calculate_mse, calculate_psnr, format_psnr, format_mse
+from backend.pipeline import extract_pipeline, ExtractError
+from frontend.ui.state import get_stored_credentials
+from stegora.analysis.histogram import calculate_histogram_from_pil, compare_histograms
+from stegora.analysis.lsb_plane import extract_lsb_plane, create_enhanced_lsb_visual
+from stegora.analysis.robustness import test_jpeg_compression as jpeg_compression_test
+import matplotlib.pyplot as plt
 
 
 def show():
-    """Analyze page UI"""
+    """Analyze page UI with full functionality"""
     page_title(
-        "Analyze Images",
-        "Steganalysis tools: metrics, histogram, enhanced LSB"
+        "Analisis Citra",
+        "Metrik kualitas, histogram, dan visualisasi LSB untuk steganalisis"
     )
     
     # Step 1: Image uploads
-    section_header("1. Upload Images")
+    section_header("1. Unggah Citra")
     
     col1, col2 = st.columns(2)
     
+    cover_valid = False
+    stego_valid = False
+    
     with col1:
         cover_file = st.file_uploader(
-            "Cover image (original)",
-            type=["png", "bmp", "jpg", "jpeg"],
+            "Citra penutup (asli)",
+            type=["png", "bmp"],
             key="analyze_cover",
-            help="Original image before embedding"
+            help="Citra asli sebelum penyisipan (hanya PNG/BMP)."
         )
         if cover_file:
-            st.image(cover_file, caption="Cover", use_container_width=True)
-            st.success(f"{cover_file.name}")
+            try:
+                cover_bytes = cover_file.read()
+                cover_image, cover_metadata = validate_and_load_cover_image(cover_bytes)
+                st.image(cover_image, caption="Citra Penutup", use_container_width=True)
+                st.success(f"✓ {cover_file.name} ({cover_metadata['width']}×{cover_metadata['height']})")
+                
+                # Store in session with different key
+                st.session_state['cover_img'] = cover_image
+                st.session_state['cover_meta'] = cover_metadata
+                cover_valid = True
+            except ImageValidationError as e:
+                st.error(f"**Kesalahan Validasi:** {str(e)}")
+            except Exception as e:
+                st.error(f"**Kesalahan:** {str(e)}")
     
     with col2:
         stego_file = st.file_uploader(
-            "Stego image (with message)",
-            type=["png", "bmp", "jpg", "jpeg"],
+            "Citra stego (berisi pesan)",
+            type=["png", "bmp"],
             key="analyze_stego",
-            help="Image after embedding"
+            help="Citra setelah penyisipan (hanya PNG/BMP)."
         )
         if stego_file:
-            st.image(stego_file, caption="Stego", use_container_width=True)
-            st.success(f"{stego_file.name}")
+            try:
+                stego_bytes = stego_file.read()
+                stego_image, stego_metadata = validate_and_load_cover_image(stego_bytes)
+                st.image(stego_image, caption="Citra Stego", use_container_width=True)
+                st.success(f"✓ {stego_file.name} ({stego_metadata['width']}×{stego_metadata['height']})")
+                
+                # Store in session with different key
+                st.session_state['stego_img'] = stego_image
+                st.session_state['stego_meta'] = stego_metadata
+                stego_valid = True
+            except ImageValidationError as e:
+                st.error(f"**Kesalahan Validasi:** {str(e)}")
+            except Exception as e:
+                st.error(f"**Kesalahan:** {str(e)}")
     
     # Step 2: Analysis options
-    if cover_file and stego_file:
-        section_header("2. Analysis Options")
+    if cover_valid and stego_valid:
+        # Check dimensions match
+        if (cover_metadata['width'] != stego_metadata['width'] or 
+            cover_metadata['height'] != stego_metadata['height']):
+            st.error("**Error:** Images must have the same dimensions!")
+            return
+        
+        section_header("2. Opsi Analisis")
         
         analysis_types = st.multiselect(
-            "Select analysis types",
+            "Pilih jenis analisis",
             [
                 "MSE & PSNR",
-                "Histogram Comparison",
-                "Enhanced LSB",
-                "m-bit LSB Comparison"
+                "Perbandingan Histogram",
+                "Visualisasi LSB yang Ditingkatkan",
+                "Uji Kerapuhan JPEG"
             ],
             default=["MSE & PSNR"],
-            help="Choose one or more analysis methods"
+            help="Pilih satu atau beberapa metode analisis."
         )
+        
+        if not analysis_types:
+            st.warning("Pilih setidaknya satu jenis analisis.")
+            return
+
+        jpeg_test_selected = "Uji Kerapuhan JPEG" in analysis_types
+        jpeg_password, jpeg_stego_key = get_stored_credentials()
+        jpeg_quality = 90
+
+        if jpeg_test_selected:
+            st.markdown("#### Uji Kerapuhan JPEG")
+            st.caption(
+                "Uji memakai citra stego yang diunggah di atas dan kredensial penyisipan "
+                "dari sesi ini. Citra disimpan ulang sebagai JPEG (kualitas 90), lalu "
+                "ekstraksi diuji kembali."
+            )
         
         col1, col2, col3 = st.columns([2, 1, 2])
         
         with col2:
             analyze_btn = st.button(
-                "Analyze",
+                "Analisis",
                 type="primary",
                 use_container_width=True
             )
         
         if analyze_btn:
-            st.info("Analysis functionality not yet implemented (requires T15-T18)")
-            muted_text("Next tasks: MSE/PSNR, Histogram, Enhanced LSB, m-bit analysis")
-            
-            # Show what will be implemented
-            with st.expander("Planned Analysis", expanded=True):
+            with st.spinner("Analyzing images..."):
+                # Convert images to numpy arrays
+                cover_array = np.array(st.session_state['cover_img'])
+                stego_array = np.array(st.session_state['stego_img'])
+                
+                # Perform selected analyses
+                section_header("3. Analysis Results")
+                jpeg_test_skip_reason = None
+                
                 for analysis in analysis_types:
                     if analysis == "MSE & PSNR":
-                        st.markdown("**MSE & PSNR:**")
-                        st.markdown("- Mean Squared Error between images")
-                        st.markdown("- Peak Signal-to-Noise Ratio (minimum 30 dB)")
-                        st.markdown("- Quality assessment")
-                    elif analysis == "Histogram Comparison":
-                        st.markdown("**Histogram Comparison:**")
-                        st.markdown("- RGB channel histograms")
-                        st.markdown("- Side-by-side comparison")
-                        st.markdown("- Visual distribution analysis")
-                    elif analysis == "Enhanced LSB":
-                        st.markdown("**Enhanced LSB:**")
-                        st.markdown("- Extract and visualize LSB plane")
-                        st.markdown("- Visual steganalysis")
-                        st.markdown("- Detect patterns")
-                    elif analysis == "m-bit LSB Comparison":
-                        st.markdown("**m-bit LSB Comparison:**")
-                        st.markdown("- Compare 1-bit, 2-bit, 3-bit, 4-bit LSB")
-                        st.markdown("- Capacity vs PSNR trade-off")
-                        st.markdown("- Enrichment feature")
+                        st.markdown("### Metrik Kualitas Citra")
+                        
+                        # Calculate MSE and PSNR
+                        mse = calculate_mse(cover_array, stego_array)
+                        psnr = calculate_psnr(cover_array, stego_array)
+                        
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.metric("MSE", format_mse(mse))
+                        with col2:
+                            st.metric("PSNR", format_psnr(psnr))
+                        with col3:
+                            if psnr == float('inf') or psnr >= 50:
+                                quality = "Sangat baik"
+                            elif psnr >= 30:
+                                quality = "Baik"
+                            else:
+                                quality = "Cukup"
+                            st.metric("Kualitas", quality)
+                        
+                        st.markdown("---")
+                    
+                    elif analysis == "Perbandingan Histogram":
+                        st.markdown("### Perbandingan Histogram RGB")
+                        
+                        # Calculate histograms
+                        cover_hist = calculate_histogram_from_pil(st.session_state['cover_img'])
+                        stego_hist = calculate_histogram_from_pil(st.session_state['stego_img'])
+                        
+                        # Plot histograms
+                        fig, axes = plt.subplots(1, 3, figsize=(15, 4))
+                        colors = ['red', 'green', 'blue']
+                        channels = ['Merah', 'Hijau', 'Biru']
+                        channel_keys = ['R', 'G', 'B']
+                        
+                        for i, (color, channel, key) in enumerate(zip(colors, channels, channel_keys)):
+                            axes[i].plot(cover_hist[key], color=color, alpha=0.7, label='Cover', linewidth=1.5)
+                            axes[i].plot(stego_hist[key], color=color, alpha=0.5, label='Stego', linestyle='--', linewidth=1.5)
+                            axes[i].set_title(f'{channel} Channel')
+                            axes[i].set_xlabel('Intensitas Piksel')
+                            axes[i].set_ylabel('Frekuensi')
+                            axes[i].legend(['Penutup', 'Stego'])
+                            axes[i].grid(True, alpha=0.3)
+                        
+                        plt.tight_layout()
+                        st.pyplot(fig)
+                        plt.close()
+                        
+                        # Comparison metrics
+                        comparison = compare_histograms(cover_hist, stego_hist)
+                        
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.metric("Rata-rata Selisih", f"{comparison['overall_mad']:.2f}")
+                        with col2:
+                            st.metric("Chi-Square", f"{comparison['overall_chi2']:.2f}")
+                        with col3:
+                            st.metric("Selisih Maksimum", f"{comparison['overall_max']:.0f}")
+                        
+                        st.caption("**Interpretasi:** Korelasi yang lebih tinggi dan nilai chi-square yang lebih rendah menunjukkan histogram yang lebih mirip.")
+                        st.markdown("---")
+                    
+                    elif analysis == "Visualisasi LSB yang Ditingkatkan":
+                        st.markdown("### Visualisasi Bidang LSB yang Ditingkatkan")
+                        
+                        # Extract LSB planes
+                        lsb_visual = create_enhanced_lsb_visual(stego_array)
+                        
+                        # Convert to PIL for display
+                        lsb_image = Image.fromarray(lsb_visual)
+                        
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            st.image(st.session_state['stego_img'], caption="Citra Stego Asli", use_container_width=True)
+                        with col2:
+                            st.image(lsb_image, caption="Bidang LSB (Ditingkatkan)", use_container_width=True)
+                        
+                        st.caption("**Visualisasi LSB:** Menampilkan bidang bit paling rendah. Pola derau acak dapat mengindikasikan steganografi.")
+                        st.markdown("---")
+
+                    elif analysis == "Uji Kerapuhan JPEG":
+                        st.markdown("### Uji Kerapuhan JPEG")
+                        if not jpeg_password or not jpeg_stego_key:
+                            jpeg_test_skip_reason = (
+                                "Kredensial Embed tidak tersedia di sesi ini. "
+                                "Lakukan Embed dan Analyze di sesi browser yang sama."
+                            )
+                            continue
+
+                        try:
+                            original_payload, _ = extract_pipeline(
+                                st.session_state['stego_img'],
+                                jpeg_password,
+                                jpeg_stego_key
+                            )
+                            st.success(
+                                f"Pemeriksaan awal berhasil: {len(original_payload)} byte "
+                                "berhasil dipulihkan dari citra stego asli."
+                            )
+
+                            jpeg_array, jpeg_metrics = jpeg_compression_test(
+                                stego_array,
+                                quality=jpeg_quality
+                            )
+                            jpeg_image = Image.fromarray(jpeg_array)
+
+                            metrics_col1, metrics_col2, metrics_col3 = st.columns(3)
+                            with metrics_col1:
+                                st.metric("Kualitas JPEG", jpeg_quality)
+                            with metrics_col2:
+                                st.metric("PSNR Citra", format_psnr(jpeg_metrics['psnr']))
+                            with metrics_col3:
+                                st.metric(
+                                    "LSB yang bertahan",
+                                    f"{jpeg_metrics['lsb_survival_rate'] * 100:.1f}%"
+                                )
+
+                            try:
+                                jpeg_payload, _ = extract_pipeline(
+                                    jpeg_image,
+                                    jpeg_password,
+                                    jpeg_stego_key
+                                )
+                                if jpeg_payload == original_payload:
+                                    st.warning(
+                                        "Ekstraksi masih berhasil pada kualitas JPEG ini. "
+                                        "Coba kualitas lebih rendah untuk melihat dampak kerapuhan."
+                                    )
+                                else:
+                                    st.error(
+                                        "Hasil ekstraksi berubah setelah kompresi JPEG; "
+                                        "muatan data tidak lagi cocok."
+                                    )
+                            except ExtractError as error:
+                                st.error(
+                                    f"Sesuai harapan, ekstraksi gagal setelah kompresi JPEG. {error}"
+                                )
+
+                            st.image(
+                                jpeg_image,
+                                caption="Citra stego setelah disimpan ulang sebagai JPEG",
+                                use_container_width=True
+                            )
+                        except ExtractError as error:
+                            jpeg_test_skip_reason = (
+                                "Citra stego asli tidak dapat diverifikasi dengan "
+                                f"kredensial sesi ini: {error}"
+                            )
+                        st.markdown("---")
+
+                if jpeg_test_skip_reason:
+                    st.warning(
+                        "Analisis lain selesai, tetapi Uji Kerapuhan JPEG tidak "
+                        f"dijalankan. {jpeg_test_skip_reason}"
+                    )
+                else:
+                    st.success("✓ Analisis selesai!")
+    
     else:
-        st.info("Upload both cover and stego images to start analysis")
-        muted_text("You need both images to perform comparative analysis")
+        st.info("Unggah citra penutup dan citra stego untuk memulai analisis.")
+        muted_text("Kedua citra diperlukan untuk analisis perbandingan. Gunakan format PNG atau BMP.")
     
     footer()

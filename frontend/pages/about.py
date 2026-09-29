@@ -11,226 +11,225 @@ from frontend.ui.components import (
 def show():
     """About page with system information"""
     page_title(
-        "About Stegora",
-        "Professional steganography suite with AES-256-GCM encryption"
+        "Tentang Stegora",
+        "Aplikasi steganografi dengan enkripsi AES-256-GCM"
     )
     
     # System Overview
-    section_header("System Overview")
+    section_header("Gambaran Sistem")
     
     st.markdown("""
     **Stegora** adalah aplikasi steganografi berbasis web yang dirancang untuk 
-    menyembunyikan pesan atau file di dalam gambar PNG/BMP menggunakan teknik 
-    **1-bit RGB LSB** (Least Significant Bit) dengan enkripsi **AES-256-GCM**.
+    menyembunyikan pesan atau berkas di dalam citra PNG/BMP menggunakan teknik 
+    **LSB RGB 1-bit** (bit paling rendah) dengan enkripsi **AES-256-GCM**.
     
     Sistem ini menggabungkan steganografi dan kriptografi untuk menyediakan 
-    dua lapis keamanan: enkripsi payload dan randomisasi posisi embedding 
-    menggunakan deterministic PRNG.
+    dua lapis keamanan: enkripsi muatan data (payload) dan pengacakan posisi penyisipan
+    menggunakan PRNG deterministik.
     """)
     
     # Technical Specifications
-    section_header("Technical Specifications")
+    section_header("Spesifikasi Teknis")
     
     col1, col2 = st.columns(2)
     
     with col1:
         st.markdown("""
-        **Cryptography**
-        - Algorithm: AES-256-GCM
-        - Key Derivation: PBKDF2-HMAC-SHA-256
-        - Iterations: 600,000
-        - Salt: 16 bytes (random per encryption)
-        - IV/Nonce: 12 bytes (random per encryption)
-        - Authentication Tag: 16 bytes (automatic)
+        **Kriptografi**
+        - Algoritma: AES-256-GCM
+        - Derivasi Kunci: PBKDF2-HMAC-SHA-256
+        - Iterasi: 600.000
+        - Salt: 16 byte (acak untuk setiap enkripsi)
+        - IV/Nonce: 12 byte (acak untuk setiap enkripsi)
+        - Tag Autentikasi: 16 byte (otomatis)
         
-        **Steganography**
-        - Method: 1-bit RGB LSB embedding
-        - Channels: RGB only (alpha preserved)
-        - Position Generation: Deterministic PRNG
-        - Position Seed: SHA-256(stego-key)
-        - Container Format: STGR binary format
-        - Supported Formats: PNG, BMP
+        **Steganografi**
+        - Metode: Penyisipan LSB RGB 1-bit
+        - Kanal: RGB saja (alfa dipertahankan)
+        - Pembangkitan Posisi: PRNG deterministik
+        - Seed Posisi: SHA-256(kunci stego)
+        - Format Kontainer: Biner STGR
+        - Format yang Didukung: PNG, BMP
         """)
     
     with col2:
         st.markdown("""
-        **Quality Metrics**
-        - MSE: Mean Squared Error
-        - PSNR: Peak Signal-to-Noise Ratio
+        **Metrik Kualitas**
+        - MSE: Rata-rata Kuadrat Galat
+        - PSNR: Rasio Sinyal terhadap Derau Puncak
         - Target: PSNR ≥ 30 dB
-        - Typical 1-bit LSB: 50-60 dB
+        - LSB 1-bit umumnya: 50–60 dB
         
-        **Analysis Tools**
-        - RGB Histogram Comparison
-        - Enhanced LSB Plane Visualization
-        - JPEG Robustness Testing
-        - m-bit LSB Comparison
-        - 5x3 Testing Matrix
-        - XLSX Export
+        **Alat Analisis**
+        - Perbandingan Histogram RGB
+        - Visualisasi Bidang LSB yang Ditingkatkan
+        - Pengujian Kerapuhan JPEG
+        - Perbandingan LSB m-bit
+        - Matriks Pengujian 5×3
+        - Ekspor XLSX
         """)
     
     # How It Works
-    section_header("How It Works")
+    section_header("Cara Kerja")
     
     st.markdown("""
-    ### Embedding Process
+    ### Proses Penyisipan
     
-    1. **Input Validation**
-       - Validate cover image format (PNG/BMP)
-       - Calculate available capacity
-       - Check payload size constraints
+     1. **Validasi Masukan**
+         - Memvalidasi format citra penutup (PNG/BMP)
+         - Menghitung kapasitas yang tersedia
+        - Memeriksa batas ukuran muatan data
     
-    2. **Cryptographic Preparation**
-       - Generate random salt (16 bytes)
-       - Derive encryption key using PBKDF2 (600k iterations)
-       - Generate random IV (12 bytes)
-       - Encrypt payload with AES-256-GCM
+     2. **Persiapan Kriptografi**
+         - Membuat salt acak (16 byte)
+         - Menurunkan kunci enkripsi dengan PBKDF2 (600 ribu iterasi)
+         - Membuat IV acak (12 byte)
+        - Mengenkripsi muatan data dengan AES-256-GCM
     
-    3. **Container Creation**
-       - Build STGR header with magic bytes
-       - Add metadata (salt, IV, filename, MIME type)
-       - Package encrypted payload
+     3. **Pembuatan Kontainer**
+         - Membuat header STGR dengan byte penanda
+         - Menambahkan metadata (salt, IV, nama berkas, jenis MIME)
+        - Mengemas muatan data terenkripsi
     
-    4. **Position Generation**
-       - Hash stego-key with SHA-256
-       - Seed deterministic PRNG
-       - Generate unique RGB channel positions
+     4. **Pembangkitan Posisi**
+         - Meng-hash kunci stego dengan SHA-256
+         - Memberi seed pada PRNG deterministik
+         - Membuat posisi kanal RGB yang unik
     
-    5. **LSB Embedding**
-       - Convert container to bit stream
-       - Modify LSB of selected RGB channels
-       - Preserve alpha channel completely
+     5. **Penyisipan LSB**
+         - Mengubah kontainer menjadi aliran bit
+         - Mengubah LSB pada kanal RGB yang dipilih
+         - Mempertahankan kanal alfa sepenuhnya
     
-    6. **Quality Assessment**
-       - Calculate MSE between cover and stego
-       - Calculate PSNR quality metric
-       - Output stego image
+     6. **Penilaian Kualitas**
+         - Menghitung MSE antara citra penutup dan stego
+         - Menghitung metrik kualitas PSNR
+         - Menghasilkan citra stego
     
     ---
     
-    ### Extraction Process
+    ### Proses Ekstraksi
     
-    1. **Position Regeneration**
-       - Hash stego-key with SHA-256 (same as embedding)
-       - Regenerate same position sequence
+     1. **Pembangkitan Ulang Posisi**
+         - Meng-hash kunci stego dengan SHA-256 seperti saat penyisipan
+         - Menghasilkan kembali urutan posisi yang sama
     
-    2. **LSB Extraction**
-       - Read LSB from determined positions
-       - Reconstruct bit stream
-       - Parse as bytes
+     2. **Ekstraksi LSB**
+         - Membaca LSB dari posisi yang ditentukan
+         - Menyusun kembali aliran bit
+         - Menguraikannya menjadi byte
     
-    3. **Container Parsing**
-       - Validate STGR magic bytes
-       - Extract header and metadata
-       - Retrieve salt, IV, and encrypted payload
+     3. **Penguraian Kontainer**
+         - Memvalidasi byte penanda STGR
+         - Mengambil header dan metadata
+        - Mendapatkan salt, IV, dan muatan data terenkripsi
     
-    4. **Decryption**
-       - Derive key from password + extracted salt
-       - Decrypt with AES-GCM using extracted IV
-       - Verify authentication tag
+     4. **Dekripsi**
+         - Menurunkan kunci dari kata sandi dan salt hasil ekstraksi
+         - Mendekripsi dengan AES-GCM menggunakan IV hasil ekstraksi
+         - Memverifikasi tag autentikasi
     
-    5. **Payload Recovery**
-       - Return original text or file
-       - Byte-perfect reconstruction
+     5. **Pemulihan Payload**
+         - Mengembalikan teks atau berkas asli
+         - Memulihkan data byte demi byte
     """)
     
     # Security Features
-    section_header("Security Features")
+    section_header("Fitur Keamanan")
     
     col1, col2 = st.columns(2)
     
     with col1:
         st.markdown("""
-        **Two-Layer Security**
+        **Keamanan Dua Lapis**
         
-        1. **Password (Encryption Layer)**
-           - Encrypts the actual payload
-           - Uses AES-256-GCM (industry standard)
-           - Provides confidentiality
-           - Authentication tag prevents tampering
+          1. **Kata Sandi (Lapisan Enkripsi)**
+              - Mengenkripsi muatan data
+              - Menggunakan AES-256-GCM
+              - Menjaga kerahasiaan
+              - Tag autentikasi mendeteksi perubahan data
         
-        2. **Stego-Key (Positioning Layer)**
-           - Determines embedding positions
-           - Deterministic but unpredictable
-           - Without correct key, data appears random
-           - Security through obscurity
+          2. **Kunci Stego (Lapisan Posisi)**
+              - Menentukan posisi penyisipan
+              - Hasilnya deterministik, tetapi sulit ditebak
+              - Tanpa kunci yang benar, data tampak acak
         """)
     
     with col2:
         st.markdown("""
-        **Protection Against**
+        **Perlindungan dari**
         
-        - Wrong Password: Authentication failure
-        - Wrong Stego-Key: Invalid magic bytes
-        - Data Tampering: GCM tag verification
-        - Brute Force: PBKDF2 with 600k iterations
-        - Statistical Analysis: Random positioning
-        - Visual Detection: Imperceptible changes
+        - Kata sandi salah: Autentikasi gagal
+        - Kunci stego salah: Byte penanda tidak valid
+        - Perubahan data: Diverifikasi oleh tag GCM
+        - Brute force: PBKDF2 dengan 600 ribu iterasi
+        - Analisis statistik: Posisi diacak
+        - Deteksi visual: Perubahan dibuat nyaris tak terlihat
         """)
     
     # Use Cases
-    section_header("Use Cases")
+    section_header("Kegunaan")
     
     st.markdown("""
-    **Educational Applications**
-    - Learn steganography techniques
-    - Understand cryptographic principles
-    - Study LSB embedding methods
-    - Analyze steganalysis techniques
+    **Pendidikan**
+    - Mempelajari teknik steganografi
+    - Memahami prinsip kriptografi
+    - Mempelajari metode penyisipan LSB
+    - Menganalisis teknik steganalisis
     
-    **Research & Development**
-    - Test steganography algorithms
-    - Evaluate quality metrics
-    - Compare embedding methods
-    - Study capacity vs quality trade-offs
+    **Riset dan Pengembangan**
+    - Menguji algoritma steganografi
+    - Mengevaluasi metrik kualitas
+    - Membandingkan metode penyisipan
+    - Mempelajari kompromi kapasitas dan kualitas
     
-    **Privacy & Security**
-    - Covert communication
-    - Digital watermarking
-    - Copyright protection
-    - Data hiding for research
+    **Privasi dan Keamanan**
+    - Komunikasi tersembunyi
+    - Penanda air digital
+    - Perlindungan hak cipta
+    - Penyembunyian data untuk riset
     
-    **Note:** This is an educational project. For production security applications,
-    additional security measures and professional audit are recommended.
+    **Catatan:** Proyek ini dibuat untuk keperluan pendidikan. Penggunaan untuk
+    keamanan produksi memerlukan perlindungan tambahan dan audit profesional.
     """)
     
     # Technical Stack
-    section_header("Technical Stack")
+    section_header("Teknologi yang Digunakan")
     
     col1, col2 = st.columns(2)
     
     with col1:
         st.markdown("""
-        **Frontend**
-        - Framework: Streamlit
-        - Language: Python 3.11
-        - UI Components: Custom theme
-        - Navigation: Multipage app
+        **Antarmuka**
+        - Kerangka kerja: Streamlit
+        - Bahasa pemrograman: Python 3.11
+        - Komponen UI: Tema khusus
+        - Navigasi: Aplikasi multi-halaman
         
-        **Backend**
-        - Cryptography: cryptography library
-        - Image Processing: Pillow (PIL)
-        - Numerics: NumPy
-        - Testing: pytest
+        **Bagian Server (Backend)**
+        - Kriptografi: pustaka cryptography
+        - Pemrosesan citra: Pillow (PIL)
+        - Komputasi numerik: NumPy
+        - Pengujian: pytest
         """)
     
     with col2:
         st.markdown("""
-        **Security Libraries**
+        **Pustaka Keamanan**
         - AES-GCM: cryptography.hazmat
         - PBKDF2: cryptography.hazmat
-        - Random: secrets module
-        - Hashing: hashlib (SHA-256)
+        - Pengacakan: modul secrets
+        - Hash: hashlib (SHA-256)
         
-        **Analysis Tools**
-        - Metrics: Custom implementation
+        **Alat Analisis**
+        - Metrik: Implementasi khusus
         - Histogram: Pillow + NumPy
-        - LSB Plane: NumPy array operations
-        - XLSX Export: openpyxl
+        - Bidang LSB: Operasi larik NumPy
+        - Ekspor XLSX: openpyxl
         """)
     
     # Project Team
-    section_header("Project Team")
+    section_header("Tim Proyek")
     
     col1, col2, col3 = st.columns(3)
     
@@ -239,11 +238,11 @@ def show():
         **Azhar**  
         247006111168
         
-        **Responsibilities:**
-        - UI/UX Design
-        - Streamlit Integration
-        - Pipeline Coordination
-        - Demo Preparation
+        **Tanggung Jawab:**
+        - Desain UI/UX
+        - Integrasi Streamlit
+        - Koordinasi pipeline
+        - Persiapan demo
         """)
     
     with col2:
@@ -251,11 +250,11 @@ def show():
         **Naufal**  
         247006111158
         
-        **Responsibilities:**
-        - Steganography Core
-        - LSB Implementation
-        - Container Format
-        - Position Generator
+        **Tanggung Jawab:**
+        - Inti steganografi
+        - Implementasi LSB
+        - Format kontainer
+        - Pembangkitan posisi
         """)
     
     with col3:
@@ -263,48 +262,48 @@ def show():
         **Hana**  
         247006111170
         
-        **Responsibilities:**
-        - Cryptography Module
-        - Quality Metrics
-        - Analysis Tools
-        - Testing Matrix
+        **Tanggung Jawab:**
+        - Modul kriptografi
+        - Metrik kualitas
+        - Alat analisis
+        - Matriks pengujian
         """)
     
     # Academic Information
-    section_header("Academic Information")
+    section_header("Informasi Akademik")
     
     st.markdown("""
-    **Institution:** Universitas Siliwangi  
-    **Course:** Keamanan Informasi  
-    **Project Type:** UTS Assignment  
-    **Topic:** Aplikasi Steganografi (Topic B)
+    **Institusi:** Universitas Siliwangi  
+    **Mata Kuliah:** Keamanan Informasi  
+    **Jenis Proyek:** Tugas UTS  
+    **Topik:** Aplikasi Steganografi (Topik B)
     
-    **AI Disclosure:** This project was developed with AI assistance for code 
-    generation, debugging, and documentation. All team members understand and 
-    can explain the implemented code and algorithms.
+    **Penggunaan AI:** Proyek ini dikembangkan dengan bantuan AI untuk membuat kode,
+    melakukan debugging, dan menyusun dokumentasi. Seluruh anggota tim memahami dan
+    dapat menjelaskan kode serta algoritma yang diterapkan.
     """)
     
     # Limitations & Disclaimers
-    section_header("Limitations & Disclaimers")
+    section_header("Batasan dan Penafian")
     
     st.markdown("""
-    **Known Limitations**
-    - Only supports lossless formats (PNG/BMP)
-    - JPEG compression destroys embedded data
-    - Large payloads may reduce image quality
-    - Stego-key security relies on obscurity
+    **Batasan yang Diketahui**
+    - Hanya mendukung format tanpa kehilangan data (PNG/BMP)
+    - Kompresi JPEG merusak data yang disisipkan
+    - Muatan data berukuran besar dapat menurunkan kualitas citra
+    - Keamanan kunci stego bergantung pada kerahasiaan kunci
     
-    **Disclaimers**
-    - Not intended for production security use without audit
-    - Educational project for learning purposes
-    - No warranty for data security or integrity
-    - Users responsible for legal and ethical use
+    **Penafian**
+    - Tidak ditujukan untuk penggunaan keamanan produksi tanpa audit
+    - Proyek pendidikan untuk keperluan pembelajaran
+    - Tidak ada jaminan atas keamanan atau integritas data
+    - Pengguna bertanggung jawab atas penggunaan yang legal dan etis
     
-    **Best Practices**
-    - Use strong, unique passwords
-    - Keep stego-key confidential
-    - Don't modify stego images
-    - Test recovery before relying on system
+    **Praktik Terbaik**
+    - Gunakan kata sandi yang kuat dan unik
+    - Jaga kerahasiaan kunci stego
+    - Jangan mengubah citra stego
+    - Uji pemulihan sebelum mengandalkan sistem
     """)
     
     # Version Information
@@ -312,10 +311,10 @@ def show():
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        st.markdown("**Version:** 1.0.0")
+        st.markdown("**Versi:** 1.0.0")
     with col2:
-        st.markdown("**Build Date:** 2026")
+        st.markdown("**Tahun Pembuatan:** 2026")
     with col3:
-        st.markdown("**License:** Educational")
+        st.markdown("**Lisensi:** Pendidikan")
     
     footer()

@@ -11,8 +11,8 @@ import pytest
 import numpy as np
 
 from stegora.analysis.testing_matrix import (
-    TestCase,
-    TestingMatrix,
+    TestCase as MatrixCase,
+    TestingMatrix as MatrixRunner,
     create_test_payloads,
     create_test_images
 )
@@ -23,7 +23,7 @@ class TestTestCase:
     
     def test_test_case_creation(self):
         """Test creating a test case."""
-        tc = TestCase(
+        tc = MatrixCase(
             case_id="T1P1",
             image_name="test.png",
             payload_name="small",
@@ -53,7 +53,7 @@ class TestTestCase:
     
     def test_to_dict(self):
         """Test converting test case to dictionary."""
-        tc = TestCase(
+        tc = MatrixCase(
             case_id="T1P1",
             image_name="test.png",
             payload_name="small",
@@ -89,14 +89,14 @@ class TestTestingMatrix:
     
     def test_matrix_initialization(self):
         """Test initializing testing matrix."""
-        matrix = TestingMatrix()
+        matrix = MatrixRunner()
         
         assert matrix.test_cases == []
         assert matrix.results == []
     
     def test_generate_test_cases(self):
         """Test generating test case configurations."""
-        matrix = TestingMatrix()
+        matrix = MatrixRunner()
         
         # Create 2 images and 2 payloads = 4 test cases
         images = [
@@ -119,7 +119,7 @@ class TestTestingMatrix:
     
     def test_execute_test_case(self):
         """Test executing a single test case."""
-        matrix = TestingMatrix()
+        matrix = MatrixRunner()
         
         img = np.zeros((100, 100, 3), dtype=np.uint8)
         payload = b"test data"
@@ -151,11 +151,11 @@ class TestTestingMatrix:
     
     def test_get_summary(self):
         """Test getting summary statistics."""
-        matrix = TestingMatrix()
+        matrix = MatrixRunner()
         
         # Create mock test cases
         matrix.test_cases = [
-            TestCase(
+            MatrixCase(
                 case_id=f"T{i}P1",
                 image_name="test.png",
                 payload_name="small",

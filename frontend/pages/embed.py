@@ -1,419 +1,314 @@
 """
-Stegora - Embed Page
-Hide text or file inside cover image using LSB steganography
+Stegora - Halaman Penyisipan
+Menyisipkan teks atau berkas ke dalam citra menggunakan steganografi LSB.
 """
-import streamlit as st
-import secrets
 import io
-from PIL import Image
 
-from frontend.ui.components import (
-    page_title, section_header, muted_text, footer
-)
+import streamlit as st
+
+from frontend.ui.components import footer, muted_text, page_title, section_header
 from frontend.ui.state import (
-    init_session_state, save_embed_result, 
-    is_demo_mode, get_demo_credentials, store_credentials
+    clear_embedding_history,
+    save_embed_result,
+    store_credentials,
 )
-from backend.image.io import validate_and_load_cover_image, ImageValidationError, save_image
+from backend.image.io import ImageValidationError, validate_and_load_cover_image
 from backend.image.metrics import calculate_mse, calculate_psnr
+from backend.pipeline import EmbedError, embed_pipeline
 from backend.stego.capacity import (
-    calculate_raw_capacity, 
+    calculate_raw_capacity,
     calculate_usable_capacity,
     check_payload_capacity,
-    validate_payload_capacity,
     format_bytes,
-    PayloadCapacityExceededError
+    validate_payload_capacity,
 )
-from backend.crypto.pbkdf2 import derive_key
-from backend.crypto.aes_gcm import encrypt
-from backend.stego.container import create_container, calculate_container_size
-from backend.stego.positions import generate_positions
-from backend.stego.lsb import embed_lsb
 
 
 def show():
-    """Embed page UI with complete workflow"""
     page_title(
-        "Embed Message",
-        "Hide text or file inside a cover image using LSB steganography"
+        "Sisipkan Pesan",
+        "Sembunyikan teks atau berkas di dalam citra menggunakan steganografi LSB"
     )
-    
-    # Step 1: Cover image
-    section_header("1. Upload Cover Image")
+
+    section_header("1. Unggah Citra Penutup")
     cover_file = st.file_uploader(
-        "Choose image (PNG, BMP, JPG/JPEG)",
-        type=["png", "bmp", "jpg", "jpeg"],
+        "Pilih citra (PNG, BMP)",
+        type=["png", "bmp"],
         key="embed_cover",
-        help="Select a lossless image format (PNG/BMP) for embedding. JPG/JPEG will be checked by format validation."
+        help="Pilih citra lossless berformat PNG atau BMP untuk menyisipkan pesan."
     )
-    
+
     cover_valid = False
     payload_size = 0
-    
     if cover_file:
         try:
-            # Read file bytes
-            cover_bytes = cover_file.read()
-            
-            # Validate and load image
-            image, metadata = validate_and_load_cover_image(cover_bytes)
-            
-            # Calculate capacity
-            raw_capacity = calculate_raw_capacity(
-                metadata['width'], 
-                metadata['height']
-            )
-            usable_capacity = calculate_usable_capacity(
-                metadata['width'], 
-                metadata['height'],
-                container_overhead=64
-            )
-            
-            # Store in session state
+            image, metadata = validate_and_load_cover_image(cover_file.getvalue())
             st.session_state.cover_image = image
             st.session_state.cover_metadata = metadata
-            st.session_state.cover_capacity = usable_capacity
             cover_valid = True
-            
-            # Display image and metadata
-            col1, col2 = st.columns([1, 2])
-            
-            with col1:
-                st.image(image, caption="Cover Image", use_container_width=True)
-            
-            with col2:
-                st.success(f"✓ Loaded: **{cover_file.name}**")
-                
-                # Image info
-                st.markdown("**Image Information**")
-                col_a, col_b = st.columns(2)
-                with col_a:
-                    st.metric("Format", metadata['format'])
-                    st.metric("Mode", metadata['mode'])
-                with col_b:
-                    st.metric("Width", f"{metadata['width']} px")
-                    st.metric("Height", f"{metadata['height']} px")
-                
-                if metadata['has_alpha']:
-                    st.caption("Alpha channel will be preserved (not used for embedding)")
-                
-                # Capacity info
-                st.markdown("**Steganography Capacity**")
-                col_c, col_d = st.columns(2)
-                with col_c:
-                    st.metric("Total Pixels", f"{metadata['total_pixels']:,}")
-                    st.metric("Raw Capacity", format_bytes(raw_capacity['total_bytes']))
-                with col_d:
-                    st.metric("Usable Capacity", format_bytes(usable_capacity['usable_capacity_bytes']))
-                    st.metric("Efficiency", f"{usable_capacity['efficiency_percent']:.1f}%")
-                
-                muted_text(f"Using 1-bit RGB LSB: 3 bits per pixel")
-            
-        except ImageValidationError as e:
-            st.error(f"**Validation Error:** {str(e)}")
+
+            raw_capacity = calculate_raw_capacity(metadata["width"], metadata["height"])
+            usable_capacity = calculate_usable_capacity(
+                metadata["width"], metadata["height"], container_overhead=64
+            )
+
+            col_image, col_details = st.columns([1, 2])
+            with col_image:
+                st.image(image, caption="Citra Penutup", use_container_width=True)
+            with col_details:
+                st.success(f"✓ Berhasil dimuat: **{cover_file.name}**")
+                st.markdown("**Informasi Citra**")
+                info_col1, info_col2 = st.columns(2)
+                with info_col1:
+                    st.metric("Format", metadata["format"])
+                    st.metric("Mode", metadata["mode"])
+                with info_col2:
+                    st.metric("Lebar", f"{metadata['width']} px")
+                    st.metric("Tinggi", f"{metadata['height']} px")
+                if metadata["has_alpha"]:
+                    st.caption("Kanal alfa dipertahankan dan tidak digunakan untuk penyisipan.")
+
+                st.markdown("**Kapasitas Steganografi**")
+                capacity_col1, capacity_col2 = st.columns(2)
+                with capacity_col1:
+                    st.metric("Jumlah Piksel", f"{metadata['total_pixels']:,}")
+                    st.metric("Kapasitas Mentah", format_bytes(raw_capacity["total_bytes"]))
+                with capacity_col2:
+                    st.metric(
+                        "Kapasitas Tersedia",
+                        format_bytes(usable_capacity["usable_capacity_bytes"])
+                    )
+                    st.metric("Efisiensi", f"{usable_capacity['efficiency_percent']:.1f}%")
+                muted_text("Menggunakan LSB RGB 1-bit: 3 bit per piksel")
+        except ImageValidationError as error:
+            st.error(f"**Kesalahan validasi:** {error}")
             st.session_state.cover_image = None
-            cover_valid = False
-        except Exception as e:
-            st.error(f"**Unexpected Error:** {str(e)}")
+        except Exception as error:
+            st.error(f"**Kesalahan tidak terduga:** {error}")
             st.session_state.cover_image = None
-            cover_valid = False
-    
-    # Step 2: Payload
-    section_header("2. Choose Payload")
-    
+
+    section_header("2. Pilih Muatan Data")
     payload_type = st.radio(
-        "Payload type",
-        ["Text", "File"],
+        "Jenis muatan data",
+        ["Teks", "Berkas"],
         horizontal=True,
-        help="Select whether to hide text or a file"
+        help="Pilih apakah yang akan disembunyikan berupa teks atau berkas."
     )
-    
+
     payload_text = None
     payload_file = None
     payload_fits = False
-    
-    if payload_type == "Text":
+    if payload_type == "Teks":
         payload_text = st.text_area(
-            "Enter secret message",
-            placeholder="Your secret message here...",
+            "Masukkan pesan rahasia",
+            placeholder="Ketik pesan rahasia di sini...",
             height=150,
-            help="Text will be encrypted before embedding",
+            help="Teks akan dienkripsi sebelum disisipkan.",
             key="secret_text"
         )
         if payload_text:
-            payload_size = len(payload_text.encode('utf-8'))
-            st.caption(f"Message size: **{format_bytes(payload_size)}**")
-            
-            # Check capacity if cover loaded
-            if cover_valid and hasattr(st.session_state, 'cover_capacity'):
-                capacity_check = check_payload_capacity(
-                    st.session_state.cover_metadata['width'],
-                    st.session_state.cover_metadata['height'],
-                    payload_size,
-                    container_overhead=64
-                )
-                
-                if capacity_check['fits']:
-                    st.success(f"✓ Payload fits ({capacity_check['utilization_percent']:.1f}% capacity utilization)")
-                    payload_fits = True
-                else:
-                    st.error(f"Payload too large! Required: {format_bytes(capacity_check['required_bytes'])}, Available: {format_bytes(capacity_check['available_bytes'])}")
-                    if capacity_check.get('rejection_reason'):
-                        st.caption(f"{capacity_check['rejection_reason']}")
-                    payload_fits = False
+            payload_size = len(payload_text.encode("utf-8"))
+            st.caption(f"Ukuran pesan: **{format_bytes(payload_size)}**")
     else:
         payload_file = st.file_uploader(
-            "Choose file to hide",
+            "Pilih berkas yang akan disembunyikan",
             key="embed_payload_file",
-            help="Small files work best"
+            help="Berkas berukuran kecil paling sesuai."
         )
         if payload_file:
             payload_size = payload_file.size
-            st.caption(f"File: **{payload_file.name}** — {format_bytes(payload_size)}")
-            
-            # Check capacity if cover loaded
-            if cover_valid and hasattr(st.session_state, 'cover_capacity'):
-                capacity_check = check_payload_capacity(
-                    st.session_state.cover_metadata['width'],
-                    st.session_state.cover_metadata['height'],
-                    payload_size,
-                    container_overhead=64
-                )
-                
-                if capacity_check['fits']:
-                    st.success(f"✓ File fits ({capacity_check['utilization_percent']:.1f}% capacity utilization)")
-                    payload_fits = True
-                else:
-                    st.error(f"File too large! Required: {format_bytes(capacity_check['required_bytes'])}, Available: {format_bytes(capacity_check['available_bytes'])}")
-                    if capacity_check.get('rejection_reason'):
-                        st.caption(f"{capacity_check['rejection_reason']}")
-                    payload_fits = False
-    
-    # Step 3: Credentials
-    section_header("3. Security Credentials")
-    
-    # Demo mode hint
-    if is_demo_mode():
-        demo_pass, demo_key = get_demo_credentials()
-        st.info(f"**Demo Mode Active** - Credentials: `{demo_pass}` / `{demo_key}`")
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        default_password = get_demo_credentials()[0] if is_demo_mode() else ""
+            st.caption(f"Berkas: **{payload_file.name}** — {format_bytes(payload_size)}")
+
+    if cover_valid and payload_size > 0:
+        capacity_check = check_payload_capacity(
+            st.session_state.cover_metadata["width"],
+            st.session_state.cover_metadata["height"],
+            payload_size,
+            container_overhead=64,
+        )
+        if capacity_check["fits"]:
+            st.success(
+                f"✓ Muatan data muat (menggunakan "
+                f"{capacity_check['utilization_percent']:.1f}% kapasitas)"
+            )
+            payload_fits = True
+        else:
+            st.error(
+                f"Muatan data terlalu besar. Dibutuhkan: "
+                f"{format_bytes(capacity_check['required_bytes'])}, tersedia: "
+                f"{format_bytes(capacity_check['available_bytes'])}."
+            )
+            st.caption("Kurangi ukuran muatan data atau gunakan citra berkapasitas lebih besar.")
+
+    section_header("3. Kredensial Keamanan")
+    credential_col1, credential_col2 = st.columns(2)
+    with credential_col1:
         password = st.text_input(
-            "Password",
+            "Kata sandi",
             type="password",
             key="embed_password",
-            value=default_password,
-            help="AES-256-GCM encryption password"
+            help="Kata sandi enkripsi AES-256-GCM (minimal 8 karakter)."
         )
-    with col2:
-        default_stego_key = get_demo_credentials()[1] if is_demo_mode() else ""
+    with credential_col2:
         stego_key = st.text_input(
-            "Stego-key",
+            "Kunci stego",
             type="password",
             key="embed_stego_key",
-            value=default_stego_key,
-            help="Deterministic position seed"
+            help="Kunci untuk menentukan posisi penyisipan (minimal 8 karakter)."
         )
-    
-    # Step 4: Embed
-    section_header("4. Embed Message")
-    
-    # Validation
-    can_embed = True
+
+    section_header("4. Sisipkan Pesan")
     warnings = []
-    
     if not cover_valid:
-        warnings.append("Upload a valid cover image")
-        can_embed = False
-    if payload_type == "Text" and not payload_text:
-        warnings.append("Enter text message")
-        can_embed = False
-    elif payload_type == "File" and not payload_file:
-        warnings.append("Upload payload file")
-        can_embed = False
+        warnings.append("Unggah citra penutup yang valid")
+    if payload_type == "Teks" and not payload_text:
+        warnings.append("Masukkan pesan teks")
+    elif payload_type == "Berkas" and not payload_file:
+        warnings.append("Unggah berkas yang akan disisipkan")
     if not password:
-        warnings.append("Enter password")
-        can_embed = False
+        warnings.append("Masukkan kata sandi")
     if not stego_key:
-        warnings.append("Enter stego-key")
-        can_embed = False
+        warnings.append("Masukkan kunci stego")
     if cover_valid and payload_size > 0 and not payload_fits:
-        warnings.append("Payload too large for this image")
-        can_embed = False
-    
+        warnings.append("Muatan data terlalu besar untuk citra ini")
     if warnings:
-        st.warning(f"Required: {', '.join(warnings)}")
-    
-    col1, col2, col3 = st.columns([2, 1, 2])
-    
-    with col2:
-        embed_btn = st.button(
-            "Embed Message",
+        st.warning(f"Perlu dilengkapi: {', '.join(warnings)}")
+
+    button_col1, button_col2, button_col3 = st.columns([2, 1, 2])
+    with button_col2:
+        embed_button = st.button(
+            "Sisipkan Pesan",
             type="primary",
             use_container_width=True,
-            disabled=not can_embed
+            disabled=bool(warnings),
         )
-    
-    # Process embedding
-    if embed_btn and can_embed:
+
+    if embed_button and not warnings:
         try:
-            with st.spinner("Embedding message..."):
-                # 1. Prepare payload
-                if payload_type == "Text":
-                    payload_bytes = payload_text.encode('utf-8')
-                    filename = "message.txt"
+            with st.spinner("Pesan sedang disisipkan..."):
+                if payload_type == "Teks":
+                    payload_bytes = payload_text.encode("utf-8")
+                    filename = "pesan.txt"
                     mime_type = "text/plain"
                 else:
-                    payload_bytes = payload_file.read()
+                    payload_bytes = payload_file.getvalue()
                     filename = payload_file.name
                     mime_type = payload_file.type or "application/octet-stream"
-                
-                # Validate capacity before expensive encryption and image mutation (Rule 8)
+
                 validate_payload_capacity(
-                    width=st.session_state.cover_metadata['width'],
-                    height=st.session_state.cover_metadata['height'],
-                    payload_size=len(payload_bytes)
+                    st.session_state.cover_metadata["width"],
+                    st.session_state.cover_metadata["height"],
+                    len(payload_bytes),
                 )
-                
-                # 2. Encrypt payload
-                # Generate random salt and IV
-                salt = secrets.token_bytes(16)
-                
-                # Derive encryption key from password
-                encryption_key = derive_key(password, salt)
-                
-                # Encrypt with AES-256-GCM (generates IV internally)
-                ciphertext, iv = encrypt(payload_bytes, encryption_key, b"")
-                
-                # 3. Build container
-                container = create_container(
-                    payload=ciphertext,
-                    salt=salt,
-                    iv=iv,
+                stego_image, embed_metadata = embed_pipeline(
+                    st.session_state.cover_image,
+                    payload_bytes,
+                    password,
+                    stego_key,
                     filename=filename,
-                    mime_type=mime_type
+                    mime_type=mime_type,
                 )
-                
-                # 4. Generate positions
-                num_bits = len(container) * 8
-                positions = generate_positions(
-                    width=st.session_state.cover_metadata['width'],
-                    height=st.session_state.cover_metadata['height'],
-                    stego_key=stego_key,
-                    num_bits=num_bits
-                )
-                
-                # 5. Embed in LSB
-                stego_image = embed_lsb(
-                    cover_image=st.session_state.cover_image,
-                    container_bytes=container,
-                    positions=positions
-                )
-                
-                # Store credentials for later use (convenience)
-                store_credentials(password, stego_key)
-                
-                # Store result in session state using state manager
-                save_embed_result(stego_image, {
-                    'payload_size': len(payload_bytes),
-                    'container_size': len(container),
-                    'filename': filename,
-                    'mime_type': mime_type,
-                    'num_positions': len(positions)
+                embed_metadata.update({
+                    "payload_type": payload_type,
+                    "cover_filename": cover_file.name,
+                    "cover_width": st.session_state.cover_metadata["width"],
+                    "cover_height": st.session_state.cover_metadata["height"],
                 })
-                
-                st.success("✓ Message embedded successfully!")
-                
-                # Show embedding statistics
-                with st.expander("Embedding Statistics", expanded=False):
-                    col_a, col_b = st.columns(2)
-                    with col_a:
-                        st.metric("Payload Size", format_bytes(len(payload_bytes)))
-                        st.metric("Encrypted Size", format_bytes(len(ciphertext)))
-                    with col_b:
-                        st.metric("Container Size", format_bytes(len(container)))
-                        st.metric("Bits Embedded", f"{num_bits:,}")
-                
-        except Exception as e:
-            st.error(f"**Embedding Failed:** {str(e)}")
+                store_credentials(password, stego_key)
+                save_embed_result(stego_image, embed_metadata)
+                st.success("✓ Pesan berhasil disisipkan!")
+
+                with st.expander("Statistik Penyisipan", expanded=False):
+                    stat_col1, stat_col2 = st.columns(2)
+                    with stat_col1:
+                        st.metric("Ukuran Muatan Data", format_bytes(len(payload_bytes)))
+                        st.metric("Ukuran Terenkripsi", format_bytes(embed_metadata["encrypted_size"]))
+                    with stat_col2:
+                        st.metric("Ukuran Kontainer", format_bytes(embed_metadata["container_size"]))
+                        st.metric("Bit Disisipkan", f"{embed_metadata['num_bits']:,}")
+        except Exception as error:
+            st.error(f"**Penyisipan gagal:** {error}")
             st.session_state.stego_image = None
-    
-    # Step 5: Result
-    if hasattr(st.session_state, 'stego_image') and st.session_state.stego_image is not None:
-        section_header("5. Result")
-        
-        # Display comparison
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.markdown("**Cover Image**")
+
+    if st.session_state.get("stego_image") is not None and st.session_state.get("cover_image") is not None:
+        section_header("5. Hasil")
+        result_col1, result_col2 = st.columns(2)
+        with result_col1:
+            st.markdown("**Citra Penutup**")
             st.image(st.session_state.cover_image, use_container_width=True)
-            st.caption("Original image")
-        
-        with col2:
-            st.markdown("**Stego Image**")
+            st.caption("Citra asli")
+        with result_col2:
+            st.markdown("**Citra Stego**")
             st.image(st.session_state.stego_image, use_container_width=True)
-            st.caption("Image with hidden data")
-        
-        # Calculate and display metrics
-        st.markdown("**Quality Metrics**")
-        
+            st.caption("Citra berisi data tersembunyi")
+
+        st.markdown("**Metrik Kualitas**")
+        metadata = st.session_state.get("embed_metadata") or {}
         try:
-            mse = calculate_mse(
-                st.session_state.cover_image,
-                st.session_state.stego_image
-            )
-            psnr = calculate_psnr(
-                st.session_state.cover_image,
-                st.session_state.stego_image,
-                mse=mse
-            )
-            
-            col_a, col_b, col_c = st.columns(3)
-            with col_a:
-                st.metric("MSE", f"{mse:.6f}", help="Mean Squared Error (lower is better)")
-            with col_b:
-                psnr_str = "∞ dB (identical)" if psnr == float('inf') else f"{psnr:.2f} dB"
-                st.metric("PSNR", psnr_str, help="Peak Signal-to-Noise Ratio (higher is better)")
-            with col_c:
-                utilization = (st.session_state.embed_metadata['container_size'] * 8 / 
-                              (st.session_state.cover_metadata['width'] * 
-                               st.session_state.cover_metadata['height'] * 3)) * 100
-                st.metric("Capacity Used", f"{utilization:.2f}%", help="Percentage of available capacity used")
-            
-            # Quality interpretation
-            if psnr == float('inf') or psnr >= 50:
-                quality_text = "**Excellent** - Changes imperceptible"
+            mse = calculate_mse(st.session_state.cover_image, st.session_state.stego_image)
+            psnr = calculate_psnr(st.session_state.cover_image, st.session_state.stego_image, mse=mse)
+            metric_col1, metric_col2, metric_col3 = st.columns(3)
+            with metric_col1:
+                st.metric("MSE", f"{mse:.6f}", help="Mean Squared Error; semakin kecil semakin baik.")
+            with metric_col2:
+                psnr_label = "∞ dB (sama)" if psnr == float("inf") else f"{psnr:.2f} dB"
+                st.metric("PSNR", psnr_label, help="Peak Signal-to-Noise Ratio; semakin besar semakin baik.")
+            with metric_col3:
+                utilization = (
+                    metadata.get("container_size", 0) * 8 /
+                    (st.session_state.cover_metadata["width"] * st.session_state.cover_metadata["height"] * 3)
+                ) * 100
+                st.metric("Kapasitas Terpakai", f"{utilization:.2f}%")
+            if psnr == float("inf") or psnr >= 50:
+                st.info("**Sangat baik** - Perubahan nyaris tidak terlihat")
             elif psnr >= 30:
-                quality_text = "**Good** - Acceptable quality"
+                st.info("**Baik** - Kualitas dapat diterima")
             else:
-                quality_text = "**Fair** - Visible artifacts possible"
-            
-            st.info(quality_text)
-            
-        except Exception as e:
-            st.warning(f"Could not calculate metrics: {str(e)}")
-        
-        # Download stego image
-        try:
-            # Convert PIL Image to bytes for download
-            img_bytes = io.BytesIO()
-            st.session_state.stego_image.save(img_bytes, format='PNG')
-            img_bytes.seek(0)
-            
-            st.download_button(
-                label="Download Stego Image",
-                data=img_bytes,
-                file_name="stego_image.png",
-                mime="image/png",
-                help="Download the image with hidden data"
-            )
-            
-            st.caption("**Important:** Keep your password and stego-key safe. You'll need both to extract the hidden message.")
-            
-        except Exception as e:
-            st.error(f"Could not prepare download: {str(e)}")
-    
+                st.info("**Cukup** - Artefak mungkin terlihat")
+        except Exception as error:
+            st.warning(f"Metrik tidak dapat dihitung: {error}")
+
+        image_buffer = io.BytesIO()
+        st.session_state.stego_image.save(image_buffer, format="PNG")
+        st.download_button(
+            "Unduh Citra Stego",
+            data=image_buffer.getvalue(),
+            file_name="stego_image.png",
+            mime="image/png",
+            help="Unduh citra yang berisi data tersembunyi.",
+        )
+        st.caption("Simpan kata sandi dan kunci stego dengan aman. Keduanya diperlukan untuk mengekstrak pesan.")
+
+    history = st.session_state.get("embed_history", [])
+    if history:
+        section_header("Riwayat Penyisipan")
+        with st.expander(f"{len(history)} penyisipan terbaru", expanded=False):
+            if st.button("Hapus Riwayat", key="clear_embed_history"):
+                clear_embedding_history()
+                st.rerun()
+            for history_item in history:
+                st.markdown(f"**{history_item['payload_filename']}** · {history_item['payload_type']}")
+                mse_value = history_item["mse"]
+                psnr_value = history_item["psnr"]
+                mse_text = f"{mse_value:.6f}" if mse_value is not None else "Tidak tersedia"
+                if psnr_value is None:
+                    psnr_text = "Tidak tersedia"
+                elif psnr_value == float("inf"):
+                    psnr_text = "∞ dB"
+                else:
+                    psnr_text = f"{psnr_value:.2f} dB"
+                st.caption(
+                    f"{history_item['created_at']} · {history_item['cover_filename']} · "
+                    f"{history_item['cover_width']}×{history_item['cover_height']} · "
+                    f"{format_bytes(history_item['payload_size'])} · MSE {mse_text} · PSNR {psnr_text}"
+                )
+                st.download_button(
+                    "Unduh Citra Stego",
+                    data=history_item["image_bytes"],
+                    file_name=history_item["download_name"],
+                    mime="image/png",
+                    key=f"embed_history_download_{history_item['record_id']}",
+                )
+                st.markdown("---")
+
     footer()

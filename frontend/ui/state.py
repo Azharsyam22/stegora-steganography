@@ -5,6 +5,11 @@ Centralized state handling for stable demo flow
 import streamlit as st
 from typing import Optional, Any, Dict
 from PIL import Image
+import io
+import uuid
+
+
+EMBED_HISTORY_LIMIT = 10
 
 
 def init_session_state():
@@ -17,6 +22,7 @@ def init_session_state():
         'stego_image': None,
         'embed_metadata': None,
         'embed_success': False,
+        'embed_history': [],
         
         # Extract page state
         'stego_input_image': None,
@@ -78,7 +84,35 @@ def save_embed_result(stego_image: Image.Image, metadata: Dict[str, Any]):
     st.session_state.embed_metadata = metadata
     st.session_state.embed_success = True
     import datetime
-    st.session_state.last_embed_time = datetime.datetime.now()
+    created_at = datetime.datetime.now()
+    st.session_state.last_embed_time = created_at
+
+    record_id = uuid.uuid4().hex
+    image_buffer = io.BytesIO()
+    stego_image.save(image_buffer, format="PNG")
+    history_item = {
+        'record_id': record_id,
+        'created_at': created_at.strftime("%Y-%m-%d %H:%M:%S"),
+        'cover_filename': metadata.get('cover_filename', 'cover image'),
+        'payload_filename': metadata.get('filename', 'payload'),
+        'payload_type': metadata.get('payload_type', 'unknown'),
+        'payload_size': metadata.get('payload_size', 0),
+        'cover_width': metadata.get('cover_width', stego_image.width),
+        'cover_height': metadata.get('cover_height', stego_image.height),
+        'container_size': metadata.get('container_size', 0),
+        'mse': metadata.get('mse'),
+        'psnr': metadata.get('psnr'),
+        'image_bytes': image_buffer.getvalue(),
+        'download_name': f"stegora_{record_id[:8]}.png",
+    }
+    history = list(st.session_state.get('embed_history', []))
+    history.insert(0, history_item)
+    st.session_state['embed_history'] = history[:EMBED_HISTORY_LIMIT]
+
+
+def clear_embedding_history():
+    """Clear saved embedding history for the current session."""
+    st.session_state['embed_history'] = []
 
 
 def save_extract_result(plaintext: bytes, metadata: Dict[str, Any]):
