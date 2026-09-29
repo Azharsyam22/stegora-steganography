@@ -26,6 +26,10 @@ def show():
     Sistem ini menggabungkan steganografi dan kriptografi untuk menyediakan 
     dua lapis keamanan: enkripsi muatan data (payload) dan pengacakan posisi penyisipan
     menggunakan PRNG deterministik.
+
+    Halaman Sisipkan juga menyediakan riwayat hingga 10 hasil selama sesi aktif.
+    Riwayat menyimpan metadata dan citra stego untuk diunduh kembali, tetapi tidak
+    mencatat kata sandi, kunci stego, atau plaintext secara terpisah.
     """)
     
     # Technical Specifications
@@ -64,9 +68,7 @@ def show():
         - Perbandingan Histogram RGB
         - Visualisasi Bidang LSB yang Ditingkatkan
         - Pengujian Kerapuhan JPEG
-        - Perbandingan LSB m-bit
-        - Matriks Pengujian 5×3
-        - Ekspor XLSX
+        - Jarak chi-square histogram
         """)
     
     # How It Works
@@ -132,6 +134,17 @@ def show():
      5. **Pemulihan Payload**
          - Mengembalikan teks atau berkas asli
          - Memulihkan data byte demi byte
+
+    ### Uji Kerapuhan JPEG
+
+    1. Unggah citra penutup dan citra stego yang sudah disimpan sebelumnya.
+    2. Pilih **Uji Kerapuhan JPEG** pada halaman Analisis.
+    3. Masukkan kata sandi dan kunci stego yang digunakan saat penyisipan.
+    4. Aplikasi memastikan pesan dapat diekstrak dari citra stego asli.
+    5. Aplikasi menyimpan ulang citra stego sebagai JPEG kualitas 90, lalu mencoba ekstraksi kembali.
+
+    JPEG berhasil dibuat; kompresinya dapat mengubah bit LSB sehingga pesan tidak dapat dipulihkan.
+    Kredensial dapat dimasukkan langsung pada halaman Analisis, jadi penyisipan ulang tidak diperlukan.
     """)
     
     # Security Features
@@ -163,7 +176,7 @@ def show():
         - Kunci stego salah: Byte penanda tidak valid
         - Perubahan data: Diverifikasi oleh tag GCM
         - Brute force: PBKDF2 dengan 600 ribu iterasi
-        - Analisis statistik: Posisi diacak
+        - Analisis histogram: Perubahan distribusi RGB dapat dibandingkan
         - Deteksi visual: Perubahan dibuat nyaris tak terlihat
         """)
     
@@ -225,7 +238,7 @@ def show():
         - Metrik: Implementasi khusus
         - Histogram: Pillow + NumPy
         - Bidang LSB: Operasi larik NumPy
-        - Ekspor XLSX: openpyxl
+        - Pengujian JPEG: Pillow dan pipeline ekstraksi
         """)
     
     # Project Team
@@ -281,6 +294,12 @@ def show():
     **Penggunaan AI:** Proyek ini dikembangkan dengan bantuan AI untuk membuat kode,
     melakukan debugging, dan menyusun dokumentasi. Seluruh anggota tim memahami dan
     dapat menjelaskan kode serta algoritma yang diterapkan.
+    """)
+
+    st.markdown("""
+    **Matriks pengujian otomatis:** 5 citra PNG × 3 ukuran muatan data (32 B, 512 B,
+    dan 2 KB). Setiap kombinasi memeriksa ekstraksi byte-per-byte serta nilai MSE dan PSNR.
+    Matriks ini dijalankan melalui pytest, bukan sebagai menu interaktif di halaman web.
     """)
     
     # Limitations & Disclaimers
