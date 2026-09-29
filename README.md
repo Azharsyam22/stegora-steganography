@@ -1,52 +1,52 @@
 # Stegora 🔒
 
-**Stegora** adalah aplikasi steganografi berbasis web yang menggunakan metode **LSB (Least Significant Bit)** dengan enkripsi **AES-256-GCM** untuk menyembunyikan pesan rahasia di dalam gambar. Aplikasi ini dikembangkan sebagai proyek UTS mata kuliah Keamanan Informasi di Universitas Siliwangi.
+**Stegora** adalah aplikasi steganografi berbasis web untuk menyisipkan teks atau berkas ke dalam citra PNG/BMP dengan metode **LSB (Least Significant Bit)** dan enkripsi **AES-256-GCM**. Aplikasi ini dikembangkan sebagai proyek UTS mata kuliah Keamanan Informasi di Universitas Siliwangi.
 
 ---
 
 ## 📚 Fitur Utama
 
-### 🔐 **Embed (Sembunyikan Pesan)**
-Menyembunyikan teks atau file rahasia ke dalam gambar PNG/BMP menggunakan teknik LSB steganografi dengan enkripsi AES-256-GCM.
+### 🔐 **Sisipkan Pesan**
+Menyisipkan teks atau berkas ke dalam citra PNG/BMP menggunakan LSB dan enkripsi AES-256-GCM.
 
-**Fitur Embed:**
-- Upload gambar PNG/BMP sebagai wadah (container)
-- Input pesan teks atau upload file untuk disembunyikan
-- Password-based key derivation menggunakan PBKDF2 (100,000 iterasi)
-- Enkripsi AES-256-GCM dengan authenticated encryption
-- Posisi penyisipan bit deterministik berdasarkan stego-key
-- Cek kapasitas otomatis sebelum embedding
-- Perhitungan MSE dan PSNR untuk analisis kualitas
-- Download stego-image hasil embedding
+**Fitur Penyisipan:**
+- Unggah citra PNG/BMP sebagai citra penutup
+- Sisipkan pesan teks atau berkas
+- Derivasi kunci berbasis kata sandi dengan PBKDF2-HMAC-SHA-256 (600.000 iterasi)
+- Enkripsi terautentikasi AES-256-GCM
+- Tentukan posisi penyisipan secara deterministik menggunakan kunci stego
+- Periksa kapasitas dan tolak payload yang tidak muat
+- Tampilkan MSE dan PSNR untuk membandingkan kualitas citra
+- Unduh citra stego hasil penyisipan
+- Simpan hingga 10 riwayat penyisipan selama sesi. Riwayat tidak mencatat kata sandi, kunci stego, atau plaintext; citra stego yang disimpan untuk diunduh tetap berisi payload terenkripsi.
 
-### 🔓 **Extract (Ekstrak Pesan)**
-Mengekstrak pesan rahasia dari stego-image menggunakan password dan stego-key yang benar.
+### 🔓 **Ekstrak Pesan**
+Mengekstrak pesan dari citra stego menggunakan kata sandi dan kunci stego yang benar.
 
-**Fitur Extract:**
-- Upload stego-image yang sudah berisi pesan tersembunyi
-- Input password dan stego-key untuk dekripsi
-- Regenerasi posisi bit deterministik dari stego-key
-- Validasi container magic bytes
-- Dekripsi AES-256-GCM dengan verifikasi authentication tag
-- Download pesan hasil ekstraksi (teks/file)
-- Demo mode untuk wrong-key educational purpose
+**Fitur Ekstraksi:**
+- Unggah citra stego PNG/BMP
+- Regenerasi posisi bit dari kunci stego
+- Validasi header kontainer STGR
+- Dekripsi AES-256-GCM dan verifikasi tag autentikasi
+- Tampilkan pesan atau unduh berkas hasil ekstraksi
 
-### 📊 **Analyze (Analisis Steganalisis)**
-Melakukan analisis mendalam terhadap gambar untuk mendeteksi kemungkinan steganografi LSB.
+### 📊 **Analisis Citra**
+Membandingkan citra penutup dan citra stego serta menguji dampak penyimpanan ulang JPEG.
 
-**Fiset Analyze:**
-- **Histogram RGB**: Visualisasi distribusi intensitas warna per channel
-- **Enhanced LSB Visualization**: Tampilkan pola LSB plane dari setiap color channel
-- **Image Quality Metrics**: Perhitungan MSE dan PSNR antara cover image dan stego-image
-- **Statistical Analysis**: Deteksi anomali distribusi bit LSB
-- **Export Analysis**: Download hasil analisis dalam format XLSX
+**Pilihan analisis:**
+- **MSE & PSNR**: Ukur perubahan dan kualitas citra setelah penyisipan
+- **Perbandingan Histogram**: Bandingkan distribusi RGB; tampilkan rata-rata selisih, selisih maksimum, dan jarak chi-square histogram
+- **Visualisasi LSB yang Ditingkatkan**: Tampilkan bidang LSB citra stego
+- **Uji Kerapuhan JPEG**: Simpan ulang citra stego sebagai JPEG kualitas 90, lalu coba ekstraksi dengan kredensial dari sesi Embed yang sama
+
+Jarak chi-square di halaman ini adalah metrik perbandingan histogram, bukan uji signifikansi statistik atau p-value.
 
 ---
 
 ## 🛠️ Instalasi & Penggunaan
 
 ### **Prasyarat**
-- Python 3.8 atau lebih tinggi
+- Python 3.10 atau lebih tinggi
 - pip (Python package manager)
 
 ### **Instalasi (Windows)**
@@ -54,7 +54,6 @@ Melakukan analisis mendalam terhadap gambar untuk mendeteksi kemungkinan stegano
 # Clone repository
 git clone https://github.com/Azharsyam22/stegora-steganography.git
 cd stegora-steganography
-
 # Buat virtual environment
 python -m venv .venv
 .venv\Scripts\activate
@@ -66,7 +65,7 @@ pip install -r requirements.txt
 ### **Instalasi (Linux/macOS)**
 ```bash
 # Clone repository
-git clone https://github.com/Azharsyam22/stegora-steganographygit
+git clone https://github.com/Azharsyam22/stegora-steganography.git
 cd stegora-steganography
 
 # Buat virtual environment
@@ -86,14 +85,20 @@ Aplikasi akan terbuka di browser pada `http://localhost:8501`
 
 ### **Menjalankan Unit Tests**
 ```bash
-# Run semua test
+# Jalankan semua tes
 pytest
 
-# Run dengan output verbose
+# Jalankan dengan output terperinci
 pytest -v
 
-# Run test spesifik
+# Jalankan tes pipeline tertentu
 pytest tests/test_pipeline.py -v
+
+# Matriks 5 citra x 3 ukuran payload
+pytest tests/test_required_matrix.py -v
+
+# Uji ekstraksi setelah citra stego disimpan ulang sebagai JPEG
+pytest tests/test_robustness.py::test_extraction_fails_after_stego_is_resaved_as_jpeg -v
 ```
 
 ---
@@ -102,55 +107,56 @@ pytest tests/test_pipeline.py -v
 
 ```
 stegora-steganography/
-├── app.py                          # Entry point aplikasi Streamlit
-├── requirements.txt                # Python dependencies
-├── pytest.ini                      # Pytest configuration
+├── app.py                          # Titik masuk aplikasi Streamlit
+├── requirements.txt                # Dependensi Python
+├── pytest.ini                      # Konfigurasi pytest
 │
-├── frontend/                       # UI Layer (Streamlit)
+├── frontend/                       # Lapisan antarmuka (Streamlit)
 │   ├── pages/
-│   │   ├── embed.py               # Halaman Embed
-│   │   ├── extract.py             # Halaman Extract
-│   │   ├── analyze.py             # Halaman Analyze
-│   │   └── about.py               # Halaman About
+│   │   ├── embed.py               # Halaman penyisipan dan riwayat
+│   │   ├── extract.py             # Halaman ekstraksi
+│   │   ├── analyze.py             # Analisis kualitas, histogram, LSB, JPEG
+│   │   └── about.py               # Informasi aplikasi
 │   └── ui/
-│       ├── components.py          # Reusable UI components
-│       ├── state.py               # Session state management
-│       └── theme.py               # Color theme configuration
+│       ├── components.py          # Komponen antarmuka yang dapat digunakan ulang
+│       ├── state.py               # Pengelolaan status sesi dan riwayat
+│       └── theme.py               # Konfigurasi tema
 │
-├── backend/                        # Business Logic Layer
+├── backend/                        # Lapisan logika aplikasi
 │   ├── crypto/
-│   │   ├── pbkdf2.py             # Key derivation (PBKDF2)
-│   │   └── aes_gcm.py            # AES-256-GCM encryption/decryption
+│   │   ├── pbkdf2.py             # Derivasi kunci (PBKDF2)
+│   │   └── aes_gcm.py            # Enkripsi/dekripsi AES-256-GCM
 │   ├── stego/
-│   │   ├── capacity.py           # Capacity calculation
-│   │   ├── container.py          # Container format handler
-│   │   ├── positions.py          # Deterministic PRNG positions
-│   │   └── lsb.py                # LSB embed/extract core
+│   │   ├── capacity.py           # Perhitungan kapasitas
+│   │   ├── container.py          # Penanganan format kontainer
+│   │   ├── positions.py          # Posisi PRNG deterministik
+│   │   └── lsb.py                # Inti penyisipan/ekstraksi LSB
 │   ├── image/
-│   │   ├── io.py                 # Image I/O operations
-│   │   └── metrics.py            # MSE/PSNR calculation
-│   └── pipeline.py                # High-level integration pipeline
+│   │   ├── io.py                 # Operasi masukan/keluaran citra
+│   │   └── metrics.py            # Perhitungan MSE/PSNR
+│   └── pipeline.py                # Integrasi alur utama
 │
-├── stegora/                        # Analysis Tools
+├── stegora/                        # Perangkat analisis
 │   └── analysis/
-│       ├── histogram.py           # RGB histogram visualization
-│       ├── lsb_plane.py          # LSB plane extraction
-│       ├── robustness.py         # Robustness testing
-│       ├── testing_matrix.py     # Comprehensive test matrix
-│       └── xlsx_export.py        # Export analysis to Excel
+│       ├── histogram.py           # Visualisasi histogram RGB
+│       ├── lsb_plane.py          # Ekstraksi bidang LSB
+│       ├── robustness.py         # Pengujian ketahanan
+│       ├── testing_matrix.py     # Matriks pengujian
+│       └── xlsx_export.py        # Utilitas ekspor hasil ke Excel
 │
-├── tests/                          # Test Suite (pytest)
-│   ├── test_pipeline.py           # E2E pipeline tests
-│   ├── test_crypto.py             # Cryptography tests
-│   ├── test_stego.py              # Steganography tests
-│   ├── test_analysis.py           # Analysis tools tests
+├── tests/                          # Kumpulan tes (pytest)
+│   ├── test_pipeline.py           # Tes pipeline end-to-end
+│   ├── test_required_matrix.py    # Matriks 5 citra × 3 ukuran muatan data
+│   ├── test_robustness.py         # Ketahanan JPEG dan serangan
+│   ├── test_embedding_history.py  # Pengujian riwayat penyisipan
 │   └── ...
 │
-├── test_images/                    # Test data (PNG/BMP samples)
-├── .streamlit/                     # Streamlit configuration
-│   └── config.toml                # Theme & server config
+├── test_images/                    # Data uji (contoh PNG/BMP)
+├── test_t18_images/                # Lima citra untuk matriks pengujian 5×3
+├── .streamlit/                     # Konfigurasi Streamlit
+│   └── config.toml                # Konfigurasi tema dan server
 │
-└── docs/                           # Documentation
+└── docs/                           # Dokumentasi
     ├── ARCHITECTURE.md            # System architecture
     ├── STEGO_SPEC.md             # Steganography specification
     ├── SECURITY.md               # Security guidelines
@@ -163,60 +169,58 @@ stegora-steganography/
 
 ### **Enkripsi**
 - **Algoritma**: AES-256-GCM (Galois/Counter Mode)
-- **Key Derivation**: PBKDF2-HMAC-SHA256 dengan 100,000 iterasi
-- **Salt**: 16 bytes random (disimpan dalam container)
-- **Nonce/IV**: 12 bytes random per encryption
-- **Authentication**: AEAD dengan 16-byte authentication tag
+- **Derivasi Kunci**: PBKDF2-HMAC-SHA-256 dengan 600.000 iterasi
+- **Salt**: 16 byte acak (disimpan di dalam kontainer)
+- **Nonce/IV**: 12 byte acak untuk setiap enkripsi
+- **Autentikasi**: AEAD dengan tag autentikasi 16 byte
 
 ### **Steganografi**
 - **Metode**: LSB (Least Significant Bit) embedding
 - **Format Gambar**: PNG (lossless), BMP (lossless)
-- **Channel Support**: RGB, RGBA (alpha channel preserved)
-- **Posisi Embedding**: Deterministik berdasarkan PRNG dengan seed dari stego-key
-- **Container Format**: Magic bytes + metadata + encrypted payload + checksum
+- **Kanal**: RGB; kanal alfa pada RGBA dipertahankan dan tidak digunakan
+- **Posisi Penyisipan**: Deterministik menggunakan PRNG dengan seed dari kunci stego
+- **Format Kontainer**: Header STGR, panjang metadata, salt, IV, nama berkas, jenis MIME, dan payload terenkripsi
 
-### **Metrics**
-- **MSE (Mean Squared Error)**: Rata-rata kuadrat selisih pixel
-- **PSNR (Peak Signal-to-Noise Ratio)**: Kualitas gambar dalam dB
-- **Capacity**: Maksimum payload = (width × height × channels) / 8 bytes
+### **Metrik**
+- **MSE (Mean Squared Error)**: Rata-rata kuadrat selisih piksel
+- **PSNR (Peak Signal-to-Noise Ratio)**: Rasio sinyal terhadap derau puncak dalam dB
+- **Kapasitas Mentah**: floor(lebar × tinggi × 3 / 8) byte; kapasitas payload berkurang setelah overhead kontainer dan enkripsi
 
 ---
 
 ## 📖 Panduan Penggunaan
 
-### **1. Embed Pesan**
-1. Buka halaman **Embed**
-2. Upload **cover image** (PNG/BMP)
-3. Pilih mode pesan: **Text** atau **File**
-4. Input **password** dan **stego-key** (min. 8 karakter)
-5. Klik **Embed Message**
-6. Download **stego-image** hasil embedding
+### **1. Sisipkan Pesan**
+1. Buka halaman **Sisipkan**
+2. Unggah citra penutup PNG/BMP
+3. Pilih **Teks** atau **Berkas**, lalu isi atau unggah muatan data
+4. Masukkan kata sandi dan kunci stego (disarankan minimal 8 karakter)
+5. Klik **Sisipkan Pesan**, lalu unduh citra stego
+6. Riwayat tersedia selama sesi browser aktif. Riwayat menyimpan metadata dan citra stego untuk diunduh kembali, tetapi tidak mencatat kata sandi, kunci stego, atau plaintext secara terpisah
 
-### **2. Extract Pesan**
-1. Buka halaman **Extract**
-2. Upload **stego-image**
-3. Input **password** dan **stego-key** yang sama saat embed
-4. Klik **Extract Message**
-5. Download pesan hasil ekstraksi
+### **2. Ekstrak Pesan**
+1. Buka halaman **Ekstrak**
+2. Unggah citra stego PNG/BMP
+3. Masukkan kata sandi dan kunci stego yang sama seperti saat penyisipan
+4. Klik **Ekstrak Pesan**
+5. Salin teks yang dipulihkan atau unduh berkas hasil ekstraksi
 
-### **3. Analyze Image**
-1. Buka halaman **Analyze**
-2. Upload **cover image** dan **stego-image**
-3. Pilih jenis analisis:
-   - Histogram RGB
-   - LSB Visualization
-   - Image Quality Metrics
-4. View hasil analisis atau export ke XLSX
+### **3. Analisis Citra**
+1. Buka halaman **Analisis**
+2. Unggah citra penutup dan citra stego dengan dimensi yang sama
+3. Pilih satu atau beberapa opsi: MSE & PSNR, Perbandingan Histogram, Visualisasi LSB yang Ditingkatkan, atau Uji Kerapuhan JPEG
+4. Untuk Uji Kerapuhan JPEG, lakukan penyisipan terlebih dahulu dan jalankan analisis pada sesi browser yang sama agar kredensial tersedia
+5. Klik **Analisis** dan baca hasil aktual yang ditampilkan
 
 ---
 
 ## 👥 Tim Pengembang
 
-| Nama | NIM | Role |
+| Nama | NIM | Peran |
 |------|-----|------|
-| **Azhar** | 247006111168 | UI/UX Development & System Integration |
-| **Naufal** | 247006111158 | Steganography Core & LSB Algorithm |
-| **Hana** | 247006111170 | Cryptography & Analysis Tools |
+| **Azhar** | 247006111168 | UI/UX dan integrasi sistem |
+| **Naufal** | 247006111158 | Inti steganografi dan algoritma LSB |
+| **Hana** | 247006111170 | Kriptografi dan perangkat analisis |
 
 ---
 
@@ -224,42 +228,41 @@ stegora-steganography/
 
 Proyek ini dikembangkan untuk memenuhi **Ujian Tengah Semester (UTS)** mata kuliah **Keamanan Informasi** di **Universitas Siliwangi** tahun 2026.
 
-**Topik**: Steganografi LSB dengan Enkripsi AES-GCM  
-**Dosen**: [Ir. Alam Rahmatulloh, S.T., M.T., MCE., IPM]  
-**Semester**: [Semester5/Tahun2026]
+**Topik**: Steganografi LSB dengan enkripsi AES-GCM
+**Dosen**: Ir. Alam Rahmatulloh, S.T., M.T., MCE., IPM
+**Semester**: Semester 5, 2026
 
 ---
 ## 📄 Dokumentasi Teknis
 
-- **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** - Arsitektur sistem dan design patterns
+- **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** - Arsitektur sistem dan pola desain
 - **[STEGO_SPEC.md](docs/STEGO_SPEC.md)** - Spesifikasi lengkap algoritma steganografi
-- **[SECURITY.md](docs/SECURITY.md)** - Panduan keamanan dan threat model
-- **[TESTING_SPEC.md](docs/TESTING_SPEC.md)** - Spesifikasi testing dan test coverage
+- **[SECURITY.md](docs/SECURITY.md)** - Panduan keamanan dan model ancaman
+- **[TESTING_SPEC.md](docs/TESTING_SPEC.md)** - Spesifikasi pengujian
 
 ---
 
-## 🧪 Test Coverage
+## 🧪 Hasil Pengujian
 
-```
-Test Suite: 347 tests
-Coverage: 99.1%
-E2E Pipeline Tests: 17/17 PASSED
-```
+Hasil pengujian terakhir: **369 tes lulus**. Cakupan kode tidak dicantumkan karena belum diukur pada pengujian terakhir.
 
-**Test Categories:**
-- ✅ Cryptography (PBKDF2, AES-GCM)
-- ✅ Steganography (LSB embed/extract)
-- ✅ Image Operations (I/O, metrics)
-- ✅ Analysis Tools (histogram, LSB plane)
-- ✅ E2E Pipeline (embed → extract round-trip)
+**Kategori Tes:**
+- ✅ Kriptografi (PBKDF2, AES-GCM)
+- ✅ Steganografi (penyisipan dan ekstraksi LSB)
+- ✅ Operasi citra (I/O dan metrik)
+- ✅ Analisis (histogram RGB, jarak chi-square, visualisasi LSB)
+- ✅ Ketahanan JPEG: citra stego disimpan ulang sebagai JPEG lalu diuji ekstraksinya
+- ✅ Matriks 5 citra × 3 ukuran muatan data: pemeriksaan MSE, PSNR, ekstraksi, dan kecocokan data
+- ✅ Riwayat penyisipan sesi: pembatasan jumlah, privasi kredensial, dan unduhan ulang
+- ✅ Pipeline end-to-end: penyisipan → ekstraksi
 
 ---
 
 ## 📝 Lisensi
 
-© 2026 Stegora Team - Universitas Siliwangi  
-Academic Project - All Rights Reserved
+© 2026 Tim Stegora - Universitas Siliwangi
+Proyek akademik - Hak cipta dilindungi
 
 ---
 
-**Built with ❤️ using Python, Streamlit, Pillow, and Cryptography**
+**Dibangun dengan Python, Streamlit, Pillow, dan cryptography**

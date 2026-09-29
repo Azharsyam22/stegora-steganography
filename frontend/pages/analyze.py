@@ -108,16 +108,33 @@ def show():
             return
 
         jpeg_test_selected = "Uji Kerapuhan JPEG" in analysis_types
-        jpeg_password, jpeg_stego_key = get_stored_credentials()
+        stored_password, stored_stego_key = get_stored_credentials()
         jpeg_quality = 90
+        jpeg_password = ""
+        jpeg_stego_key = ""
 
         if jpeg_test_selected:
             st.markdown("#### Uji Kerapuhan JPEG")
             st.caption(
-                "Uji memakai citra stego yang diunggah di atas dan kredensial penyisipan "
-                "dari sesi ini. Citra disimpan ulang sebagai JPEG (kualitas 90), lalu "
-                "ekstraksi diuji kembali."
+                "Unggah citra penutup dan citra stego lama, lalu masukkan kredensial "
+                "yang digunakan saat penyisipan. Citra stego akan disimpan ulang sebagai "
+                "JPEG kualitas 90 dan diuji ekstraksinya. Embed ulang tidak diperlukan."
             )
+            credential_col1, credential_col2 = st.columns(2)
+            with credential_col1:
+                jpeg_password = st.text_input(
+                    "Kata sandi untuk uji JPEG",
+                    type="password",
+                    key="jpeg_test_password",
+                    value=stored_password,
+                )
+            with credential_col2:
+                jpeg_stego_key = st.text_input(
+                    "Kunci stego untuk uji JPEG",
+                    type="password",
+                    key="jpeg_test_stego_key",
+                    value=stored_stego_key,
+                )
         
         col1, col2, col3 = st.columns([2, 1, 2])
         
@@ -224,8 +241,8 @@ def show():
                         st.markdown("### Uji Kerapuhan JPEG")
                         if not jpeg_password or not jpeg_stego_key:
                             jpeg_test_skip_reason = (
-                                "Kredensial Embed tidak tersedia di sesi ini. "
-                                "Lakukan Embed dan Analyze di sesi browser yang sama."
+                                "Masukkan kata sandi dan kunci stego yang digunakan "
+                                "saat citra tersebut disisipkan."
                             )
                             continue
 
@@ -269,13 +286,18 @@ def show():
                                         "Coba kualitas lebih rendah untuk melihat dampak kerapuhan."
                                     )
                                 else:
-                                    st.error(
-                                        "Hasil ekstraksi berubah setelah kompresi JPEG; "
-                                        "muatan data tidak lagi cocok."
+                                    st.success(
+                                        "Uji kerapuhan berhasil: hasil ekstraksi berubah "
+                                        "setelah citra stego disimpan ulang sebagai JPEG. "
+                                        "Muatan data tidak lagi sama dengan pesan asli."
                                     )
-                            except ExtractError as error:
-                                st.error(
-                                    f"Sesuai harapan, ekstraksi gagal setelah kompresi JPEG. {error}"
+                            except ExtractError:
+                                st.success(
+                                    "Uji kerapuhan berhasil: pesan tidak dapat diekstrak "
+                                    "setelah citra stego disimpan ulang sebagai JPEG. "
+                                    "Kompresi JPEG mengubah bit LSB yang menyimpan pesan. "
+                                    "Pemeriksaan citra asli sebelumnya berhasil, jadi ini "
+                                    "bukan karena kunci stego salah."
                                 )
 
                             st.image(
@@ -283,10 +305,10 @@ def show():
                                 caption="Citra stego setelah disimpan ulang sebagai JPEG",
                                 use_container_width=True
                             )
-                        except ExtractError as error:
+                        except ExtractError:
                             jpeg_test_skip_reason = (
-                                "Citra stego asli tidak dapat diverifikasi dengan "
-                                f"kredensial sesi ini: {error}"
+                                "Citra stego asli tidak berhasil diekstrak. Pastikan "
+                                "berkas stego dan kredensial yang dimasukkan sesuai."
                             )
                         st.markdown("---")
 
