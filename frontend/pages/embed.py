@@ -56,7 +56,7 @@ def show():
             with col_image:
                 st.image(image, caption="Citra Penutup", use_container_width=True)
             with col_details:
-                st.success(f"✓ Berhasil dimuat: **{cover_file.name}**")
+                st.success(f"Berhasil dimuat: **{cover_file.name}**")
                 st.markdown("**Informasi Citra**")
                 info_col1, info_col2 = st.columns(2)
                 with info_col1:
@@ -128,7 +128,7 @@ def show():
         )
         if capacity_check["fits"]:
             st.success(
-                f"✓ Muatan data muat (menggunakan "
+                f"Muatan data muat (menggunakan "
                 f"{capacity_check['utilization_percent']:.1f}% kapasitas)"
             )
             payload_fits = True
@@ -141,21 +141,40 @@ def show():
             st.caption("Kurangi ukuran muatan data atau gunakan citra berkapasitas lebih besar.")
 
     section_header("3. Kredensial Keamanan")
-    credential_col1, credential_col2 = st.columns(2)
-    with credential_col1:
-        password = st.text_input(
-            "Kata sandi",
-            type="password",
-            key="embed_password",
-            help="Kata sandi enkripsi AES-256-GCM (minimal 8 karakter)."
-        )
-    with credential_col2:
-        stego_key = st.text_input(
-            "Kunci stego",
-            type="password",
-            key="embed_stego_key",
-            help="Kunci untuk menentukan posisi penyisipan (minimal 8 karakter)."
-        )
+    
+    st.markdown("Masukkan **kata kunci** untuk enkripsi dan penentuan posisi penyisipan:")
+    st.caption("Kata kunci ini digunakan untuk enkripsi AES-256-GCM dan menentukan posisi LSB secara deterministik.")
+    
+    # Generate button first
+    col_gen_info, col_gen_btn = st.columns([4, 1])
+    
+    with col_gen_info:
+        if 'generated_key' in st.session_state and st.session_state.generated_key:
+            st.info(f"**Kata kunci ter-generate:** `{st.session_state.generated_key}`")
+            st.caption("SIMPAN kata kunci ini! Tanpa kata kunci, data tidak dapat diekstrak.")
+    
+    with col_gen_btn:
+        if st.button("Generate", use_container_width=True, help="Generate kata kunci acak yang kuat (16 karakter)"):
+            import secrets
+            import string
+            # Generate 16-character strong password
+            chars = string.ascii_letters + string.digits + "!@#$%^&*-_"
+            strong_key = ''.join(secrets.choice(chars) for _ in range(16))
+            st.session_state.generated_key = strong_key
+            st.rerun()
+    
+    # Password input - will be auto-filled if generated_key exists
+    password = st.text_input(
+        "Kata Kunci / Password",
+        type="password",
+        key="embed_password",
+        value=st.session_state.get('generated_key', ''),
+        help="Gunakan kata kunci yang kuat (minimal 8 karakter). Simpan baik-baik untuk ekstraksi nanti.",
+        placeholder="Masukkan kata kunci yang kuat atau klik Generate..."
+    )
+    
+    # Use same password for stego_key (unified credential)
+    stego_key = password
 
     section_header("4. Sisipkan Pesan")
     warnings = []
@@ -166,9 +185,7 @@ def show():
     elif payload_type == "Berkas" and not payload_file:
         warnings.append("Unggah berkas yang akan disisipkan")
     if not password:
-        warnings.append("Masukkan kata sandi")
-    if not stego_key:
-        warnings.append("Masukkan kunci stego")
+        warnings.append("Masukkan kata kunci")
     if cover_valid and payload_size > 0 and not payload_fits:
         warnings.append("Muatan data terlalu besar untuk citra ini")
     if warnings:
@@ -216,7 +233,7 @@ def show():
                 })
                 store_credentials(password, stego_key)
                 save_embed_result(stego_image, embed_metadata)
-                st.success("✓ Pesan berhasil disisipkan!")
+                st.success("Pesan berhasil disisipkan!")
 
                 with st.expander("Statistik Penyisipan", expanded=False):
                     stat_col1, stat_col2 = st.columns(2)

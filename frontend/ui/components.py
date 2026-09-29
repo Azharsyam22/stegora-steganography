@@ -191,7 +191,7 @@ def success_message(message: str):
     Args:
         message: Success text
     """
-    st.success(f"✓ {message}")
+    st.success(f"{message}")
 
 
 def warning_list(items: list):

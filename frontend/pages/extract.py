@@ -38,10 +38,10 @@ def show():
     # Step 1: Stego image
     section_header("1. Unggah Citra Stego")
     stego_file = st.file_uploader(
-        "Pilih citra (PNG, BMP)",
-        type=["png", "bmp"],
+        "Pilih citra (PNG, BMP, JPG)",
+        type=["png", "bmp", "jpg", "jpeg"],
         key="extract_stego",
-        help="Pilih citra yang berisi pesan tersembunyi. Hanya PNG/BMP yang didukung."
+        help="Pilih citra yang berisi pesan tersembunyi. PNG/BMP untuk ekstraksi normal. JPG/JPEG untuk uji kerapuhan (akan gagal karena lossy compression)."
     )
     
     stego_valid = False
@@ -52,9 +52,13 @@ def show():
             stego_bytes = stego_file.read()
             image, metadata = validate_and_load_cover_image(stego_bytes)
             
+            # Detect if JPEG for warning
+            is_jpeg = metadata['format'].upper() in ['JPEG', 'JPG']
+            
             # Store in session state
             st.session_state.stego_image = image
             st.session_state.stego_metadata = metadata
+            st.session_state.is_jpeg_stego = is_jpeg
             stego_valid = True
             
             # Display
@@ -64,7 +68,16 @@ def show():
                 st.image(image, caption="Citra Stego", use_container_width=True)
             
             with col2:
-                st.success(f"✓ Berhasil dimuat: **{stego_file.name}**")
+                if is_jpeg:
+                    st.warning(f"**Format JPEG Terdeteksi:** {stego_file.name}")
+                    st.error(
+                        "**Uji Kerapuhan JPEG:** Citra ini dalam format JPEG (lossy compression). "
+                        "Kompresi JPEG mengubah pixel values dan merusak bit LSB yang menyimpan data steganografi. "
+                        "Ekstraksi kemungkinan besar akan **GAGAL**. Ini adalah uji kerapuhan untuk mendemonstrasikan "
+                        "bahwa steganografi LSB tidak robust terhadap lossy compression."
+                    )
+                else:
+                    st.success(f"Berhasil dimuat: **{stego_file.name}**")
                 
                 # Image info
                 st.markdown("**Informasi Citra**")
@@ -76,7 +89,10 @@ def show():
                     st.metric("Lebar", f"{metadata['width']} px")
                     st.metric("Tinggi", f"{metadata['height']} px")
                 
-                muted_text("Citra siap diekstrak")
+                if not is_jpeg:
+                    muted_text("Citra siap diekstrak")
+                else:
+                    st.caption("Ekstraksi dari JPEG untuk demo kerapuhan")
                 
         except ImageValidationError as e:
             st.error(f"**Kesalahan Validasi:** {str(e)}")
@@ -88,25 +104,19 @@ def show():
     # Step 2: Credentials
     section_header("2. Kredensial Keamanan")
     
-    st.markdown("Masukkan kredensial yang sama dengan yang digunakan saat penyisipan:")
+    st.markdown("Masukkan **kata kunci** yang sama dengan saat penyisipan:")
     
-    col1, col2 = st.columns(2)
-    with col1:
-        password = st.text_input(
-            "Kata sandi",
-            type="password",
-            key="extract_password",
-            value="",
-            help="Gunakan kata sandi yang sama dengan saat enkripsi."
-        )
-    with col2:
-        stego_key = st.text_input(
-            "Kunci stego",
-            type="password",
-            key="extract_stego_key",
-            value="",
-            help="Gunakan kunci stego yang sama untuk menentukan posisi."
-        )
+    password = st.text_input(
+        "Kata Kunci / Password",
+        type="password",
+        key="extract_password",
+        value="",
+        help="Gunakan kata kunci yang sama persis dengan saat penyisipan. Case-sensitive!",
+        placeholder="Masukkan kata kunci..."
+    )
+    
+    # Use same password for stego_key (unified credential)
+    stego_key = password
     
     # Step 3: Extract
     section_header("3. Ekstrak Pesan")
@@ -119,10 +129,7 @@ def show():
         warnings.append("Unggah citra stego yang valid")
         can_extract = False
     if not password:
-        warnings.append("Masukkan kata sandi")
-        can_extract = False
-    if not stego_key:
-        warnings.append("Masukkan kunci stego")
+        warnings.append("Masukkan kata kunci")
         can_extract = False
     
     if warnings:
@@ -223,7 +230,7 @@ def show():
                     'integrity': 'OK'
                 }
                 
-                st.success("✓ Pesan berhasil diekstrak dan didekripsi!")
+                st.success("Pesan berhasil diekstrak dan didekripsi!")
                 
                 # Show extraction statistics
                 with st.expander("Statistik Ekstraksi", expanded=False):
@@ -237,12 +244,37 @@ def show():
                 
         except ContainerError as e:
             st.error(f"**Kesalahan Kontainer:** {str(e)}")
-            st.caption("Biasanya kunci stego salah atau citra rusak.")
+            
+            # Check if JPEG for specific message
+            if hasattr(st.session_state, 'is_jpeg_stego') and st.session_state.is_jpeg_stego:
+                st.info(
+                    "**Uji Kerapuhan JPEG Berhasil:** "
+                    "Ekstraksi gagal karena citra stego disimpan dalam format JPEG (lossy compression). "
+                    "Kompresi JPEG mengubah bit LSB yang menyimpan data steganografi, sehingga header magic number "
+                    "dan struktur kontainer rusak. Ini membuktikan bahwa steganografi LSB **tidak robust** "
+                    "terhadap kompresi lossy.\n\n"
+                    "**Kesimpulan:** Format lossless (PNG, BMP) wajib untuk komunikasi steganografi."
+                )
+            else:
+                st.caption("Biasanya kunci stego salah atau citra rusak.")
+            
             st.session_state.extracted_data = None
             
         except ValueError as e:
             st.error(f"**Kesalahan Dekripsi:** {str(e)}")
-            st.caption("Biasanya kata sandi salah atau data rusak.")
+            
+            # Check if JPEG for specific message
+            if hasattr(st.session_state, 'is_jpeg_stego') and st.session_state.is_jpeg_stego:
+                st.info(
+                    "**Uji Kerapuhan JPEG Berhasil:** "
+                    "Dekripsi gagal karena data yang diekstrak dari JPEG corrupt. "
+                    "Kompresi JPEG merusak bit LSB, sehingga payload terenkripsi tidak dapat didekripsi "
+                    "meskipun password benar. Authentication tag AES-GCM mendeteksi perubahan data.\n\n"
+                    "**Kesimpulan:** Steganografi LSB tidak dapat digunakan dengan format JPEG."
+                )
+            else:
+                st.caption("Biasanya kata sandi salah atau data rusak.")
+            
             st.session_state.extracted_data = None
             
         except Exception as e:
@@ -294,7 +326,7 @@ def show():
                 st.metric("Jenis MIME", extracted['mime_type'])
             with col2:
                 st.metric("Ukuran Berkas", format_bytes(extracted['payload_size']))
-                st.metric("Status", "✓ Siap")
+                st.metric("Status", "Siap")
             
             # Download button
             st.download_button(
@@ -309,10 +341,10 @@ def show():
         st.markdown("**Status Verifikasi**")
         col1, col2, col3 = st.columns(3)
         with col1:
-            status = "✓ Valid" if extracted['magic_valid'] else "✗ Invalid"
+            status = "Valid" if extracted['magic_valid'] else "Invalid"
             st.metric("Byte Penanda", status, help="Validasi header STGR.")
         with col2:
-            status = "✓ Valid" if extracted['auth_valid'] else "✗ Invalid"
+            status = "Valid" if extracted['auth_valid'] else "Invalid"
             st.metric("Tag Autentikasi", status, help="Autentikasi AES-GCM berhasil.")
         with col3:
             st.metric("Integritas", extracted['integrity'], help="Integritas data secara keseluruhan.")
@@ -340,7 +372,6 @@ def show():
               - Jangan mengubah format (PNG ↔ BMP aman jika lossless)
         
           4. **Hasil yang diharapkan**
-              - [✓] Kredensial benar → Pesan asli dipulihkan
               - [X] Kata sandi salah → Autentikasi gagal
               - [X] Kunci stego salah → Data rusak atau kesalahan pembacaan
               - [X] Citra diubah → Data rusak atau tidak lengkap
